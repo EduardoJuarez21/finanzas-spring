@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Control de Gastos</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><text y='52' font-size='56'>💰</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/styles.css}" href="/styles.css">
+  <script>
+    (function () {
+      const saved = localStorage.getItem("finanzas-theme");
+      const dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.add(dark ? "dark" : "light");
+    })();
+  </script>
+</head>
+<body>
+  <div class="page-shell">
+    <main class="layout">
+      <section id="incomeSection" class="panel">
+        <details class="settings-panel card-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Entradas</p>
+              <h2>Registrar ingreso</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <form id="incomeForm" class="form-grid">
+              <label>
+                Fecha
+                <input name="date" type="date" required>
+              </label>
+              <label>
+                Monto
+                <input name="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+              </label>
+              <label class="form-grid__full">
+                Descripción
+                <input name="description" type="text" maxlength="120" placeholder="Ej. Nómina quincenal Elisa" required>
+              </label>
+              <label>
+                Fuente de ingreso
+                <select name="source" id="incomeSource" required></select>
+              </label>
+              <button class="button button--secondary form-grid__full" type="submit">Guardar ingreso</button>
+            </form>
+          </div>
+        </details>
+      </section>
+
+      <section id="quickExpenseSection" class="panel panel--priority">
+        <details class="settings-panel card-panel" open>
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Uso diario</p>
+              <h2>Registrar gasto</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <form id="expenseForm" class="form-grid">
+              <label>
+                Fecha
+                <input name="date" type="date" required>
+              </label>
+              <label>
+                Monto
+                <input name="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+              </label>
+              <label class="form-grid__full">
+                Descripción
+                <input name="description" type="text" maxlength="120" placeholder="Ej. Supermercado, gasolina, colegiatura" required>
+              </label>
+              <label>
+                Tipo de gasto
+                <select name="category" id="expenseCategory" required></select>
+              </label>
+              <label>
+                Cuenta o medio de pago
+                <select name="account" id="expenseAccount" required></select>
+              </label>
+              <p id="expenseAccountHint" class="form-note form-grid__full"></p>
+              <button class="button button--primary form-grid__full" type="submit">Guardar gasto</button>
+            </form>
+          </div>
+        </details>
+      </section>
+
+      <section id="planningSection" class="panel">
+        <details class="settings-panel card-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Planeación</p>
+              <h2>Gastos fijos</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <form id="fixedExpenseForm" class="form-grid">
+              <label class="form-grid__full">
+                Nombre del gasto fijo
+                <input name="name" type="text" maxlength="120" placeholder="Ej. Renta, internet, colegiatura" required>
+              </label>
+              <label>
+                Monto mensual
+                <input name="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+              </label>
+              <label>
+                Día de pago
+                <input name="dueDay" type="number" min="1" max="31" inputmode="numeric" placeholder="15" required>
+              </label>
+              <label>
+                Categoría
+                <select name="category" id="fixedCategory" required></select>
+              </label>
+              <label>
+                Cuenta sugerida
+                <select name="account" id="fixedAccount" required></select>
+              </label>
+              <button class="button button--ghost form-grid__full" type="submit">Agregar gasto fijo</button>
+            </form>
+          </div>
+        </details>
+      </section>
+
+      <section id="dashboardSection" class="panel panel--wide">
+        <div class="panel__header">
+          <div>
+            <p class="section-kicker">Dashboard</p>
+            <h2>Resumen general</h2>
+          </div>
+          <div class="app-bar__month">
+            <span>Periodo</span>
+            <div class="month-selects">
+              <select id="monthPickerMonth"></select>
+              <select id="monthPickerYear"></select>
+            </div>
+          </div>
+          <button id="themeToggleBtn" class="button button--ghost" type="button" aria-label="Cambiar tema">☀︎</button>
+          <button id="refreshDataBtn" class="button button--primary button--load" type="button">Cargar datos</button>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat-card stat-card--income">
+            <span>Ingresos del mes</span>
+            <strong id="totalIncome">$0.00</strong>
+            <small>Incluye salario Elisa, salario Lalo y registros manuales.</small>
+          </article>
+          <article class="stat-card stat-card--expense">
+            <span>Gastos del mes + fijos</span>
+            <strong id="totalExpense">$0.00</strong>
+            <small>Suma de gastos diarios y compromisos fijos del periodo.</small>
+          </article>
+          <article class="stat-card stat-card--fixed">
+            <span>Compromiso MSI</span>
+            <strong id="fixedCommitment">$0.00</strong>
+            <small>Mensualidades activas de compras a meses sin intereses.</small>
+          </article>
+          <article class="stat-card stat-card--balance">
+            <span>Balance actual</span>
+            <strong id="currentBalance">$0.00</strong>
+            <small>Ingresos menos gastos del mes y mensualidades MSI.</small>
+          </article>
+        </div>
+
+        <div class="dashboard-grid">
+          <details class="mini-panel settings-panel" open>
+            <summary class="mini-panel__title settings-panel__summary">
+              <div>
+                <h3>Gastos por cuenta</h3>
+                <span>Pasivos, medios de pago y MSI</span>
+              </div>
+              <span class="settings-panel__hint"></span>
+            </summary>
+            <div id="accountSummary" class="stack-list" style="margin-top:12px"></div>
+          </details>
+
+          <details class="mini-panel settings-panel" open>
+            <summary class="mini-panel__title settings-panel__summary">
+              <div>
+                <h3>Gastos por categoría</h3>
+                <span>Control por tipo de gasto</span>
+              </div>
+              <span class="settings-panel__hint"></span>
+            </summary>
+            <div id="categorySummary" class="stack-list" style="margin-top:12px"></div>
+          </details>
+
+          <details class="mini-panel mini-panel--recent settings-panel" open>
+            <summary class="mini-panel__title settings-panel__summary">
+              <div>
+                <h3>Gastos recientes</h3>
+                <span>Últimos movimientos capturados</span>
+              </div>
+              <span class="settings-panel__hint"></span>
+            </summary>
+            <div id="recentExpenses" class="transaction-list" style="margin-top:12px"></div>
+          </details>
+        </div>
+      </section>
+
+      <section id="expenseLedgerSection" class="panel panel--wide">
+        <details id="expenseLedgerPanel" class="settings-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Movimientos</p>
+              <h2>Gastos del mes</h2>
+            </div>
+            <div class="ledger-filter-wrap">
+              <select id="expenseAccountFilter" class="ledger-filter-select">
+                <option value="">Todas las cuentas</option>
+              </select>
+              <span class="settings-panel__hint"></span>
+            </div>
+          </summary>
+          <div class="settings-panel__body">
+            <div id="expenseLedgerContext" class="ledger-context" hidden>
+              <span id="expenseLedgerContextText" class="ledger-context__text"></span>
+              <button id="expenseLedgerClearFilter" class="button button--ghost button--small" type="button">Ver todos</button>
+            </div>
+            <div id="expenseList" class="transaction-list"></div>
+            <div id="expensePaginator" class="paginator"></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="fixedExpensesSection" class="panel panel--wide">
+        <details class="settings-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Planeación</p>
+              <h2>Gastos fijos registrados</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <div id="fixedExpenseList" class="table-list"></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="moreSection" class="panel panel--wide mobile-more-panel">
+        <div class="panel__header">
+          <div>
+            <p class="section-kicker">Accesos</p>
+            <h2>Mas opciones</h2>
+          </div>
+        </div>
+        <div class="mobile-more-grid">
+          <a href="#msiSection">MSI activos</a>
+          <a href="#msiRegisterSection">Registrar MSI</a>
+          <a href="#incomeSection">Ingreso</a>
+          <a href="#planningSection">Gasto fijo</a>
+          <a href="#fixedExpensesSection">Fijos</a>
+          <a href="#categorySection">Categorias</a>
+          <a href="#yearlySection">Anual</a>
+          <a href="#cardsSection">Tarjetas</a>
+        </div>
+      </section>
+
+      <section id="msiRegisterSection" class="panel panel--wide">
+        <details class="settings-panel card-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Financiamiento</p>
+              <h2>Registrar MSI</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <form id="msiForm" class="form-grid">
+              <label class="form-grid__full">
+                Nombre de la compra
+                <input name="name" type="text" maxlength="120" placeholder="Ej. Refrigerador, laptop, viaje" required>
+              </label>
+              <label>
+                Cuenta
+                <select name="account" id="msiAccount" required></select>
+              </label>
+              <label>
+                Categoría
+                <select name="categoryName" id="msiCategory" required></select>
+              </label>
+              <label>
+                Mensualidad
+                <input name="monthlyPayment" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+              </label>
+              <label>
+                Meses del plan
+                <input name="monthsRemaining" type="number" min="1" step="1" inputmode="numeric" placeholder="12" required>
+              </label>
+              <label>
+                Total pendiente
+                <input name="pendingTotal" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" readonly required>
+              </label>
+              <label>
+                Fecha de compra
+                <input name="purchaseDate" type="date" required>
+              </label>
+              <button class="button button--primary form-grid__full" type="submit">Registrar MSI</button>
+            </form>
+          </div>
+        </details>
+      </section>
+
+      <section id="msiSection" class="panel panel--wide">
+        <details class="settings-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Financiamiento</p>
+              <h2>Meses sin intereses (MSI)</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <div class="msi-summary">
+              <article class="metric-row">
+                <span>MSI activos</span>
+                <strong id="msiActiveCount">0</strong>
+              </article>
+              <article class="metric-row">
+                <span>Meses pendientes</span>
+                <strong id="msiRemainingMonths">0</strong>
+              </article>
+              <article class="metric-row">
+                <span>Total pendiente</span>
+                <strong id="msiPendingTotal">$0.00</strong>
+              </article>
+            </div>
+            <div id="msiList" class="table-list"></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="virtualAccountsSection" class="panel panel--wide" hidden>
+        <details class="settings-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Especie</p>
+              <h2>Cuentas de vales</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <div id="virtualAccountsList" class="stack-list"></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="categorySection" class="panel panel--wide">
+        <details class="settings-panel card-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Catálogo</p>
+              <h2>Categorías de gasto</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <form id="expenseCategoryForm" class="form-grid form-grid--compact">
+              <label>
+                Nombre
+                <input name="name" type="text" maxlength="80" placeholder="Ej. Suscripciones" required>
+              </label>
+              <label>
+                Tipo
+                <select name="kind">
+                  <option value="variable">Variable</option>
+                  <option value="fixed">Fijo</option>
+                  <option value="debt">Deuda</option>
+                </select>
+              </label>
+              <button class="button button--primary form-grid__full" type="submit">Agregar categoría</button>
+            </form>
+            <div id="expenseCategoryList" class="table-list" style="margin-top:16px"></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="fixedIncomeSection" class="panel panel--wide">
+        <details class="settings-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Planeación</p>
+              <h2>Ingresos fijos</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <form id="fixedIncomeForm" class="form-grid form-grid--compact">
+              <label class="form-grid__full">
+                Nombre
+                <input name="name" type="text" maxlength="120" placeholder="Ej. Salario Elisa, Salario Lalo" required>
+              </label>
+              <label>
+                Monto mensual
+                <input name="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+              </label>
+              <label>
+                Fuente de ingreso
+                <select name="source" id="fixedIncomeSource" required></select>
+              </label>
+              <label>
+                Tipo
+                <select name="kind">
+                  <option value="cash">Efectivo</option>
+                  <option value="in_kind">Especie (vales, beneficios)</option>
+                </select>
+              </label>
+              <button class="button button--secondary form-grid__full" type="submit">Agregar ingreso fijo</button>
+            </form>
+            <div id="fixedIncomeList" class="table-list" style="margin-top:16px"></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="incomeLedgerSection" class="panel panel--wide">
+        <details class="settings-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Movimientos</p>
+              <h2>Ingresos del mes</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <div id="incomeList" class="transaction-list"></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="yearlySection" class="panel panel--wide">
+        <div class="panel__header">
+          <div>
+            <p class="section-kicker">Anual</p>
+            <h2>Balance del año</h2>
+          </div>
+          <label class="app-bar__month">
+            <span>Año</span>
+            <input id="yearPicker" type="number" min="2020" max="2099" inputmode="numeric" style="width:90px">
+          </label>
+        </div>
+        <div id="yearlyStats" class="stats-grid stats-grid--4"></div>
+        <div id="yearlyTable" class="yearly-table"></div>
+      </section>
+
+      <section id="cardsSection" class="panel panel--wide">
+        <details class="settings-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Tarjetas</p>
+              <h2>Cortes y pagos</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <form id="accountCutForm" class="form-grid form-grid--compact">
+              <label>
+                Tarjeta
+                <select name="accountName" id="accountCutSelect" required></select>
+              </label>
+              <label>
+                Fecha de corte real
+                <input name="cutDate" id="accountCutDateInput" type="date" required>
+              </label>
+              <button class="button button--secondary form-grid__full" type="submit">Marcar que ya cortó</button>
+            </form>
+            <div id="accountCutList" class="table-list"></div>
+            <div id="accountCycleList" class="table-list"></div>
+          </div>
+        </details>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobile-nav" aria-label="Navegacion principal">
+    <a href="#quickExpenseSection"><span aria-hidden="true">+</span>Gasto</a>
+    <a href="#dashboardSection"><span aria-hidden="true">$</span>Resumen</a>
+    <a href="#expenseLedgerSection"><span aria-hidden="true">=</span>Movs.</a>
+    <a href="#moreSection"><span aria-hidden="true">...</span>Mas</a>
+  </nav>
+
+  <dialog id="editExpenseDialog" class="edit-dialog">
+    <form id="editExpenseForm" class="form-grid" method="dialog">
+      <div class="edit-dialog__header form-grid__full">
+        <h3>Editar gasto</h3>
+        <button type="button" id="editExpenseClose" class="button button--ghost button--small">✕</button>
+      </div>
+      <input type="hidden" name="expenseId">
+      <label>
+        Fecha
+        <input name="date" type="date" required>
+      </label>
+      <label>
+        Monto
+        <input name="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+      </label>
+      <label class="form-grid__full">
+        Descripción
+        <input name="description" type="text" maxlength="120" required>
+      </label>
+      <label>
+        Tipo de gasto
+        <select name="category" id="editExpenseCategory" required></select>
+      </label>
+      <label>
+        Cuenta
+        <select name="account" id="editExpenseAccount" required></select>
+      </label>
+      <button class="button button--primary form-grid__full" type="submit">Guardar cambios</button>
+    </form>
+  </dialog>
+
+  <dialog id="editIncomeDialog" class="edit-dialog">
+    <form id="editIncomeForm" class="form-grid" method="dialog">
+      <div class="edit-dialog__header form-grid__full">
+        <h3>Editar ingreso</h3>
+        <button type="button" id="editIncomeClose" class="button button--ghost button--small">✕</button>
+      </div>
+      <input type="hidden" name="incomeId">
+      <label>
+        Fecha
+        <input name="date" type="date" required>
+      </label>
+      <label>
+        Monto
+        <input name="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+      </label>
+      <label class="form-grid__full">
+        Descripción
+        <input name="description" type="text" maxlength="120" required>
+      </label>
+      <label class="form-grid__full">
+        Fuente de ingreso
+        <select name="source" id="editIncomeSource" required></select>
+      </label>
+      <button class="button button--secondary form-grid__full" type="submit">Guardar cambios</button>
+    </form>
+  </dialog>
+
+  <dialog id="editMsiDialog" class="edit-dialog">
+    <form id="editMsiForm" class="form-grid" method="dialog">
+      <div class="edit-dialog__header form-grid__full">
+        <h3>Editar MSI</h3>
+        <button type="button" id="editMsiClose" class="button button--ghost button--small">✕</button>
+      </div>
+      <input type="hidden" name="msiId">
+      <label class="form-grid__full">
+        Nombre de la compra
+        <input name="name" type="text" maxlength="120" required>
+      </label>
+      <label>
+        Mensualidad
+        <input name="monthlyPayment" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+      </label>
+      <label>
+        Meses del plan
+        <input name="monthsRemaining" type="number" min="0" step="1" inputmode="numeric" required>
+      </label>
+      <label>
+                Fecha de compra
+                <input name="purchaseDate" type="date" required>
+              </label>
+      <button class="button button--secondary form-grid__full" type="submit">Guardar cambios</button>
+    </form>
+  </dialog>
+
+  <div id="loadingOverlay" class="loading-overlay" hidden>
+    <div class="loading-overlay__card">
+      <div class="loading-overlay__spinner" aria-hidden="true"></div>
+      <strong id="loadingMessage">Guardando...</strong>
+    </div>
+  </div>
+
+  <template id="emptyStateTemplate">
+    <div class="empty-state">
+      <strong>Sin movimientos</strong>
+      <p>Registra información para ver el resumen aquí.</p>
+    </div>
+  </template>
+
+  <script th:src="@{/app.js}" src="/app.js"></script>
+</body>
+</html>
+
+

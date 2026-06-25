@@ -1,0 +1,9 @@
+target/
+backups/
+.git/
+.idea/
+.vscode/
+*.dump
+*.log
+docker-compose.yml
+HELP.md
