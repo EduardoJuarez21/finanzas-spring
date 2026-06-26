@@ -893,6 +893,34 @@ html.light select {
   font-size: 0.92rem;
 }
 
+.ledger-tools {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.ledger-tools__field {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  max-width: 320px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ledger-tools__field input {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+}
+
 .paginator {
   display: flex;
   align-items: center;
@@ -1177,6 +1205,16 @@ html.light select {
   .ledger-context {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .ledger-tools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ledger-tools__field {
+    min-width: 0;
+    max-width: none;
   }
 
   #expenseLedgerPanel > .settings-panel__summary {

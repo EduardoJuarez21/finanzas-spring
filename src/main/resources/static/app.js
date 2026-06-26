@@ -35,6 +35,8 @@ const elements = {
   expenseLedgerContextText: document.querySelector("#expenseLedgerContextText"),
   expenseLedgerClearFilter: document.querySelector("#expenseLedgerClearFilter"),
   expenseAccountFilter: document.querySelector("#expenseAccountFilter"),
+  expenseAmountSearch: document.querySelector("#expenseAmountSearch"),
+  expenseShowAllToggle: document.querySelector("#expenseShowAllToggle"),
   expensePaginator: document.querySelector("#expensePaginator"),
   incomeList: document.querySelector("#incomeList"),
   fixedExpenseList: document.querySelector("#fixedExpenseList"),
@@ -90,6 +92,8 @@ let loadingDepth = 0;
 const ledger = {
   accountFilter: "",
   categoryFilter: "",
+  amountQuery: "",
+  showAll: false,
   page: 0,
   pageSize: 10,
 };
@@ -386,6 +390,7 @@ function syncLedgerContext() {
   const parts = [];
   if (ledger.categoryFilter) parts.push(`Categoria: ${ledger.categoryFilter}`);
   if (ledger.accountFilter) parts.push(`Cuenta: ${ledger.accountFilter}`);
+  if (ledger.amountQuery) parts.push(`Monto: ${ledger.amountQuery}`);
 
   if (!parts.length) {
     elements.expenseLedgerContext.hidden = true;
@@ -689,6 +694,28 @@ function nextDateISO(dateValue) {
   return `${dateValue.getFullYear()}-${String(dateValue.getMonth() + 1).padStart(2, "0")}-${String(dateValue.getDate()).padStart(2, "0")}`;
 }
 
+function normalizeAmountText(value) {
+  const text = String(value ?? "").trim().replace(/[$,\s]/g, "");
+  if (!text) {
+    return "";
+  }
+  const number = Number(text);
+  return Number.isFinite(number) ? number.toFixed(2) : text;
+}
+
+function amountMatchesSearch(amount, query) {
+  const normalizedQuery = normalizeAmountText(query);
+  if (!normalizedQuery) {
+    return true;
+  }
+  const normalizedAmount = normalizeAmountText(amount);
+  const compactQuery = normalizedQuery.replace(/\.00$/, "");
+  const compactAmount = normalizedAmount.replace(/\.00$/, "");
+  return normalizedAmount.includes(normalizedQuery)
+    || compactAmount.includes(compactQuery)
+    || String(amount ?? "").includes(String(query).trim());
+}
+
 function renderAccountHint() {
   const accountName = elements.expenseAccount.value;
   const setting = state.accountSettings[accountName];
@@ -750,22 +777,24 @@ function renderLedgerExpenses() {
   const filtered = state.expenses.filter((item) => {
     if (ledger.accountFilter && item.account_name !== ledger.accountFilter) return false;
     if (ledger.categoryFilter && item.category_name !== ledger.categoryFilter) return false;
+    if (!amountMatchesSearch(item.amount, ledger.amountQuery)) return false;
     return true;
   });
 
   const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / ledger.pageSize));
+  const totalPages = ledger.showAll ? 1 : Math.max(1, Math.ceil(total / ledger.pageSize));
   ledger.page = Math.min(ledger.page, totalPages - 1);
 
   const start = ledger.page * ledger.pageSize;
-  const pageItems = filtered.slice(start, start + ledger.pageSize);
+  const pageItems = ledger.showAll ? filtered : filtered.slice(start, start + ledger.pageSize);
+  elements.expenseShowAllToggle.textContent = ledger.showAll ? "Usar paginación" : "Mostrar todos en una página";
 
   elements.expenseList.innerHTML = "";
   if (!pageItems.length) {
     const empty = cloneEmptyState();
-    if (ledger.accountFilter || ledger.categoryFilter) {
+    if (ledger.accountFilter || ledger.categoryFilter || ledger.amountQuery) {
       empty.querySelector("strong").textContent = "Sin movimientos para este filtro";
-      empty.querySelector("p").textContent = "Prueba otra categoria o limpia los filtros para ver todo el mes.";
+      empty.querySelector("p").textContent = "Prueba otra cuenta, categoria o monto para ver movimientos.";
     }
     elements.expenseList.appendChild(empty);
   } else {
@@ -794,7 +823,7 @@ function renderLedgerExpenses() {
   syncLedgerContext();
 
   elements.expensePaginator.innerHTML = "";
-  if (totalPages <= 1) return;
+  if (ledger.showAll || totalPages <= 1) return;
 
   const info = document.createElement("span");
   info.className = "paginator__info";
@@ -1735,6 +1764,18 @@ function setupForms() {
     renderLedgerExpenses();
   });
 
+  elements.expenseAmountSearch.addEventListener("input", () => {
+    ledger.amountQuery = elements.expenseAmountSearch.value.trim();
+    ledger.page = 0;
+    renderLedgerExpenses();
+  });
+
+  elements.expenseShowAllToggle.addEventListener("click", () => {
+    ledger.showAll = !ledger.showAll;
+    ledger.page = 0;
+    renderLedgerExpenses();
+  });
+
   elements.expenseCategoryForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -1820,8 +1861,11 @@ function setupForms() {
   elements.expenseLedgerClearFilter.addEventListener("click", () => {
     ledger.accountFilter = "";
     ledger.categoryFilter = "";
+    ledger.amountQuery = "";
+    ledger.showAll = false;
     ledger.page = 0;
     elements.expenseAccountFilter.value = "";
+    elements.expenseAmountSearch.value = "";
     renderLedgerExpenses();
   });
 
