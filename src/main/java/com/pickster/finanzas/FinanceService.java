@@ -201,6 +201,11 @@ public class FinanceService {
     }
 
     public List<Map<String, Object>> installmentPlans(boolean activeOnly) {
+        return installmentPlans(activeOnly, null);
+    }
+
+    public List<Map<String, Object>> installmentPlans(boolean activeOnly, String month) {
+        YearMonth referenceMonth = month == null ? null : requireMonth(month);
         String where = activeOnly ? "where p.status = 'active'" : "";
         List<Map<String, Object>> rows = em.createQuery("""
                 select p from InstallmentPlan p
@@ -219,6 +224,7 @@ public class FinanceService {
         return rows.stream()
             .filter(row -> number(row.get("months_remaining")).intValue() > 0)
             .filter(row -> number(row.get("pending_total")).compareTo(BigDecimal.ZERO) > 0)
+            .filter(row -> referenceMonth == null || installmentActiveInMonth(row, referenceMonth))
             .toList();
     }
 
@@ -353,7 +359,7 @@ public class FinanceService {
     public Map<String, Object> dashboard(String month) {
         YearMonth ym = requireMonth(month);
         List<Map<String, Object>> monthlyExpenses = expenses(month, 500);
-        List<Map<String, Object>> activeMsi = installmentPlans(true);
+        List<Map<String, Object>> activeMsi = installmentPlans(true, month);
         BigDecimal income = sum(incomes(month, 500), "amount").add(
             fixedIncomes(true).stream()
                 .filter(row -> "cash".equals(row.get("kind")))

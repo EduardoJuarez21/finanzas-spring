@@ -1128,7 +1128,7 @@ async function refreshFinanceData() {
         apiFetch(`/incomes?month=${encodeURIComponent(month)}&limit=100`),
         apiFetch(`/fixed-expenses?month=${encodeURIComponent(month)}`),
         apiFetch("/fixed-incomes?active_only=true"),
-        apiFetch("/installment-plans?active_only=true"),
+        apiFetch(`/installment-plans?active_only=true&month=${encodeURIComponent(month)}`),
         apiFetch("/account-cuts?limit=50"),
         apiFetch(`/account-payments?month=${encodeURIComponent(month)}`),
       ]);

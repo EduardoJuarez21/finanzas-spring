@@ -105,8 +105,9 @@ public class FinanceController {
     }
 
     @GetMapping("/installment-plans")
-    public Map<String, Object> installmentPlans(@RequestParam(name = "active_only", defaultValue = "false") boolean active_only) {
-        return items(service.installmentPlans(active_only));
+    public Map<String, Object> installmentPlans(@RequestParam(name = "active_only", defaultValue = "false") boolean active_only,
+                                                @RequestParam(defaultValue = "") String month) {
+        return items(service.installmentPlans(active_only, blankToNull(month)));
     }
 
     @PostMapping("/installment-plans")
