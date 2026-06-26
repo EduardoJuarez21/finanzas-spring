@@ -384,10 +384,14 @@ public class FinanceService {
         Map<String, BigDecimal> byAccountExpenses = groupSum(monthlyExpenses, "account_name", "amount");
         Map<String, Map<String, Object>> byAccountCutSummary = accountCutSummaryAmounts(ym);
         Map<String, BigDecimal> byAccountMsi = new LinkedHashMap<>();
+        Map<String, BigDecimal> byAccountFixed = new LinkedHashMap<>();
         Set<String> virtualAccounts = new HashSet<>();
         for (Map<String, Object> row : monthlyExpenses) {
             if (Boolean.TRUE.equals(row.get("is_virtual"))) {
                 virtualAccounts.add(String.valueOf(row.get("account_name")));
+            }
+            if ("fixed".equals(row.get("entry_type")) && !"paid".equals(row.get("payment_status"))) {
+                byAccountFixed.merge(String.valueOf(row.get("account_name")), number(row.get("amount")), BigDecimal::add);
             }
         }
         for (Map<String, Object> row : activeMsi) {
@@ -409,15 +413,18 @@ public class FinanceService {
             BigDecimal expenseAmount = byAccountExpenses.getOrDefault(name, BigDecimal.ZERO);
             Map<String, Object> cutSummary = byAccountCutSummary.get(name);
             BigDecimal openCutAmount = BigDecimal.ZERO;
+            BigDecimal fixedAmount = BigDecimal.ZERO;
             if (cutSummary != null) {
                 expenseAmount = number(cutSummary.get("payable_cut_amount"));
                 openCutAmount = number(cutSummary.get("open_cut_amount"));
+                fixedAmount = byAccountFixed.getOrDefault(name, BigDecimal.ZERO);
             }
             BigDecimal msiAmount = byAccountMsi.getOrDefault(name, BigDecimal.ZERO);
             return map(
                 "account_name", name,
-                "amount", expenseAmount.add(msiAmount),
+                "amount", expenseAmount.add(fixedAmount).add(msiAmount),
                 "expense_amount", expenseAmount,
+                "fixed_amount", fixedAmount,
                 "msi_amount", msiAmount,
                 "uses_cut_cycle", cutSummary != null,
                 "open_cut_amount", openCutAmount,
@@ -552,7 +559,7 @@ public class FinanceService {
                   where e.account_id = a.id
                     and month_cut.cut_date is not null
                     and (
-                      previous_cut.cut_date is null
+                      (previous_cut.cut_date is null and e.expense_date >= :startInclusive)
                       or e.expense_date > previous_cut.cut_date
                       or (e.expense_date = previous_cut.cut_date and e.created_at > previous_cut.created_at)
                     )

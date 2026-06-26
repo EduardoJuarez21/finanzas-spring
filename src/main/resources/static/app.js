@@ -263,6 +263,7 @@ function renderAccountSummaryRows(rows) {
   rows.forEach((row) => {
     const hasMsi = row.msi_amount > 0;
     const hasExpense = row.expense_amount > 0;
+    const hasFixed = Number(row.fixed_amount || 0) > 0;
     const hasOpenCut = Number(row.open_cut_amount || 0) > 0;
     const setting = state.accountSettings[row.account_name] || {};
     const payment = state.accountPayments.find((item) => item.account_name === row.account_name);
@@ -276,6 +277,9 @@ function renderAccountSummaryRows(rows) {
     const payNowRows = [];
     if (hasExpense) {
       payNowRows.push({ label: row.uses_cut_cycle ? "Corte por pagar" : "Gastos", amount: row.expense_amount });
+    }
+    if (hasFixed) {
+      payNowRows.push({ label: "Fijos del mes", amount: row.fixed_amount });
     }
     if (hasMsi) {
       payNowRows.push({ label: "MSI del mes", amount: row.msi_amount });
