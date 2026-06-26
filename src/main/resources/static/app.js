@@ -458,7 +458,16 @@ function isExpenseAfterLatestCut(item) {
   if (!latestCut?.cut_date || !item.date) {
     return false;
   }
-  return item.date > latestCut.cut_date;
+  if (item.date > latestCut.cut_date) {
+    return true;
+  }
+  if (item.date < latestCut.cut_date) {
+    return false;
+  }
+  if (!item.created_at || !latestCut.created_at) {
+    return false;
+  }
+  return new Date(item.created_at).getTime() > new Date(latestCut.created_at).getTime();
 }
 
 function expenseCutBadge(item) {
