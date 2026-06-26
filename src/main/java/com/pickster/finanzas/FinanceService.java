@@ -439,6 +439,10 @@ public class FinanceService {
                 "is_virtual", virtualAccounts.contains(name)
             );
         }).sorted((a, b) -> number(b.get("amount")).compareTo(number(a.get("amount")))).toList();
+        BigDecimal adjustedExpense = expenseByAccount.stream()
+            .filter(row -> !Boolean.TRUE.equals(row.get("is_virtual")))
+            .map(row -> number(row.get("expense_amount")).add(number(row.get("fixed_amount"))))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<Map<String, Object>> expenseByCategory = groupSum(monthlyExpenses, "category_name", "amount").entrySet().stream()
             .map(e -> map("category_name", e.getKey(), "amount", e.getValue()))
@@ -449,10 +453,10 @@ public class FinanceService {
         data.put("month", month);
         data.put("totals", map(
             "income", income,
-            "expense", expense,
+            "expense", adjustedExpense,
             "fixed_commitment", fixedCommitment,
             "installment_commitment", msiCommitment,
-            "balance", income.subtract(expense).subtract(msiCommitment)
+            "balance", income.subtract(adjustedExpense).subtract(msiCommitment)
         ));
         data.put("msi", map(
             "active_count", activeMsi.size(),
@@ -509,10 +513,10 @@ public class FinanceService {
         List<Object[]> rows = em.createNativeQuery("""
                 select
                   a.name as account_name,
-                  previous_cut.cut_date as payable_cut_start,
-                  month_cut.cut_date as payable_cut_end,
+                  payable_start.cut_date as payable_cut_start,
+                  payable_end.cut_date as payable_cut_end,
                   payable_total.amount as payable_cut_amount,
-                  latest_cut.cut_date as open_cut_start,
+                  month_cut.cut_date as open_cut_start,
                   next_cut.cut_date as open_cut_end,
                   open_total.amount as open_cut_amount
                 from finance.accounts a
@@ -529,6 +533,14 @@ public class FinanceService {
                   select c.cut_date, c.created_at
                   from finance.account_cut_events c
                   where c.account_id = a.id
+                    and c.cut_date < :startInclusive
+                  order by c.cut_date desc, c.created_at desc
+                  limit 1
+                ) latest_before_month on true
+                left join lateral (
+                  select c.cut_date, c.created_at
+                  from finance.account_cut_events c
+                  where c.account_id = a.id
                     and month_cut.cut_date is not null
                     and (
                       c.cut_date < month_cut.cut_date
@@ -538,21 +550,21 @@ public class FinanceService {
                   limit 1
                 ) previous_cut on true
                 left join lateral (
-                  select c.cut_date, c.created_at
-                  from finance.account_cut_events c
-                  where c.account_id = a.id
-                    and c.cut_date < :endExclusive
-                  order by c.cut_date desc, c.created_at desc
-                  limit 1
-                ) latest_cut on true
+                  select
+                    coalesce(previous_cut.cut_date, latest_before_month.cut_date) as cut_date,
+                    coalesce(previous_cut.created_at, latest_before_month.created_at) as created_at
+                ) payable_start on true
+                left join lateral (
+                  select month_cut.cut_date, month_cut.created_at
+                ) payable_end on month_cut.cut_date is not null
                 left join lateral (
                   select c.cut_date, c.created_at
                   from finance.account_cut_events c
                   where c.account_id = a.id
-                    and latest_cut.cut_date is not null
+                    and month_cut.cut_date is not null
                     and (
-                      c.cut_date > latest_cut.cut_date
-                      or (c.cut_date = latest_cut.cut_date and c.created_at > latest_cut.created_at)
+                      c.cut_date > month_cut.cut_date
+                      or (c.cut_date = month_cut.cut_date and c.created_at > month_cut.created_at)
                     )
                   order by c.cut_date asc, c.created_at asc
                   limit 1
@@ -561,25 +573,25 @@ public class FinanceService {
                   select coalesce(sum(e.amount), 0) as amount
                   from finance.expenses e
                   where e.account_id = a.id
-                    and month_cut.cut_date is not null
                     and (
-                      (previous_cut.cut_date is null and e.expense_date >= :startInclusive)
-                      or e.expense_date > previous_cut.cut_date
-                      or (e.expense_date = previous_cut.cut_date and e.created_at > previous_cut.created_at)
+                      (payable_start.cut_date is null and e.expense_date >= :startInclusive)
+                      or e.expense_date > payable_start.cut_date
+                      or (e.expense_date = payable_start.cut_date and e.created_at > payable_start.created_at)
                     )
                     and (
-                      e.expense_date < month_cut.cut_date
-                      or (e.expense_date = month_cut.cut_date and e.created_at < month_cut.created_at)
+                      payable_end.cut_date is null
+                      or e.expense_date < payable_end.cut_date
+                      or (e.expense_date = payable_end.cut_date and e.created_at < payable_end.created_at)
                     )
                 ) payable_total on true
                 left join lateral (
                   select coalesce(sum(e.amount), 0) as amount
                   from finance.expenses e
                   where e.account_id = a.id
-                    and latest_cut.cut_date is not null
+                    and month_cut.cut_date is not null
                     and (
-                      e.expense_date > latest_cut.cut_date
-                      or (e.expense_date = latest_cut.cut_date and e.created_at > latest_cut.created_at)
+                      e.expense_date > month_cut.cut_date
+                      or (e.expense_date = month_cut.cut_date and e.created_at > month_cut.created_at)
                     )
                     and (
                       next_cut.cut_date is null
