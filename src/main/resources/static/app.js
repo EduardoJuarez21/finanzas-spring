@@ -272,6 +272,13 @@ function renderAccountSummaryRows(rows) {
     const canMarkPayment = !row.is_virtual && isCard && row.amount > 0;
     const article = document.createElement("article");
     article.className = `metric-row account-card${isPaid ? " account-card--paid" : ""}${hasCurrentMonthCut ? " account-card--cut" : ""}`;
+    const breakdownParts = [];
+    if (hasExpense) {
+      breakdownParts.push(`${row.uses_cut_cycle ? "Nuevo corte" : "Gastos"} ${formatMoney(row.expense_amount)}`);
+    }
+    if (hasMsi) {
+      breakdownParts.push(`MSI ${formatMoney(row.msi_amount)}`);
+    }
     const virtualIncome = row.is_virtual
       ? state.fixedIncomes.find((item) => item.kind === "in_kind" && item.account_name === row.account_name)
       : null;
@@ -314,7 +321,7 @@ function renderAccountSummaryRows(rows) {
         </span>
         <span class="account-breakdown">
           <strong class="account-breakdown__total">${formatMoney(row.amount)}</strong>
-          ${hasExpense && hasMsi ? `<span class="account-breakdown__detail">Gastos ${formatMoney(row.expense_amount)} · MSI ${formatMoney(row.msi_amount)}</span>` : ""}
+          ${breakdownParts.length ? `<span class="account-breakdown__detail">${breakdownParts.join(" · ")}</span>` : ""}
           ${isPaid && payment.paid_date ? `<span class="account-breakdown__detail">Pagado el ${formatDate(payment.paid_date)}</span>` : ""}
         </span>
       </button>

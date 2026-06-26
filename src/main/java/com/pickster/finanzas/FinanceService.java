@@ -382,6 +382,7 @@ public class FinanceService {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, BigDecimal> byAccountExpenses = groupSum(monthlyExpenses, "account_name", "amount");
+        Map<String, Map<String, Object>> byAccountCutCycle = accountCutCycleAmounts(ym);
         Map<String, BigDecimal> byAccountMsi = new LinkedHashMap<>();
         Set<String> virtualAccounts = new HashSet<>();
         for (Map<String, Object> row : monthlyExpenses) {
@@ -396,16 +397,28 @@ public class FinanceService {
         }
         Set<String> accounts = new TreeSet<>();
         accounts.addAll(byAccountExpenses.keySet());
+        byAccountCutCycle.forEach((name, cutCycle) -> {
+            if (number(cutCycle.get("cut_cycle_amount")).compareTo(BigDecimal.ZERO) > 0) {
+                accounts.add(name);
+            }
+        });
         accounts.addAll(byAccountMsi.keySet());
 
         List<Map<String, Object>> expenseByAccount = accounts.stream().map(name -> {
             BigDecimal expenseAmount = byAccountExpenses.getOrDefault(name, BigDecimal.ZERO);
+            Map<String, Object> cutCycle = byAccountCutCycle.get(name);
+            if (cutCycle != null) {
+                expenseAmount = number(cutCycle.get("cut_cycle_amount"));
+            }
             BigDecimal msiAmount = byAccountMsi.getOrDefault(name, BigDecimal.ZERO);
             return map(
                 "account_name", name,
                 "amount", expenseAmount.add(msiAmount),
                 "expense_amount", expenseAmount,
                 "msi_amount", msiAmount,
+                "uses_cut_cycle", cutCycle != null,
+                "cut_cycle_start", cutCycle == null ? null : cutCycle.get("cut_cycle_start"),
+                "cut_cycle_end", cutCycle == null ? null : cutCycle.get("cut_cycle_end"),
                 "is_virtual", virtualAccounts.contains(name)
             );
         }).sorted((a, b) -> number(b.get("amount")).compareTo(number(a.get("amount")))).toList();
@@ -470,6 +483,63 @@ public class FinanceService {
             "months", months,
             "totals", map("income", totalIncome, "expense", totalExpense, "msi", totalMsi, "balance", totalIncome.subtract(totalExpense).subtract(totalMsi))
         );
+    }
+
+    private Map<String, Map<String, Object>> accountCutCycleAmounts(YearMonth month) {
+        LocalDate endExclusive = month.plusMonths(1).atDay(1);
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createNativeQuery("""
+                select
+                  a.name as account_name,
+                  latest_cut.cut_date as cut_cycle_start,
+                  next_cut.cut_date as cut_cycle_end,
+                  coalesce(sum(e.amount), 0) as cut_cycle_amount
+                from finance.accounts a
+                join lateral (
+                  select c.cut_date, c.created_at
+                  from finance.account_cut_events c
+                  where c.account_id = a.id
+                    and c.cut_date < :endExclusive
+                  order by c.cut_date desc, c.created_at desc
+                  limit 1
+                ) latest_cut on true
+                left join lateral (
+                  select c.cut_date, c.created_at
+                  from finance.account_cut_events c
+                  where c.account_id = a.id
+                    and (
+                      c.cut_date > latest_cut.cut_date
+                      or (c.cut_date = latest_cut.cut_date and c.created_at > latest_cut.created_at)
+                    )
+                  order by c.cut_date asc, c.created_at asc
+                  limit 1
+                ) next_cut on true
+                left join finance.expenses e on e.account_id = a.id
+                  and (
+                    e.expense_date > latest_cut.cut_date
+                    or (e.expense_date = latest_cut.cut_date and e.created_at > latest_cut.created_at)
+                  )
+                  and (
+                    next_cut.cut_date is null
+                    or e.expense_date < next_cut.cut_date
+                    or (e.expense_date = next_cut.cut_date and e.created_at < next_cut.created_at)
+                  )
+                where a.account_type in ('credit', 'store_card')
+                  and a.is_active = true
+                group by a.name, latest_cut.cut_date, next_cut.cut_date
+                """)
+            .setParameter("endExclusive", endExclusive)
+            .getResultList();
+        Map<String, Map<String, Object>> result = new LinkedHashMap<>();
+        for (Object[] row : rows) {
+            String accountName = String.valueOf(row[0]);
+            result.put(accountName, map(
+                "cut_cycle_start", row[1],
+                "cut_cycle_end", row[2],
+                "cut_cycle_amount", row[3]
+            ));
+        }
+        return result;
     }
 
     private void applyExpense(Expense item, Map<String, Object> payload) {
