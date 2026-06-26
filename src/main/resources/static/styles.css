@@ -727,9 +727,32 @@ body.is-loading {
   border-color: rgba(22, 105, 122, 0.24);
 }
 
+.status-chip--new-cycle {
+  margin-left: 6px;
+  background: rgba(209, 143, 47, 0.16);
+  color: var(--warning);
+  border-color: rgba(209, 143, 47, 0.30);
+}
+
 .transaction {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+}
+
+.transaction--new-cycle {
+  border-color: rgba(209, 143, 47, 0.34);
+  background: linear-gradient(90deg, rgba(209, 143, 47, 0.13), var(--surface-raised) 62%);
+}
+
+.transaction--new-cycle .transaction__title::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 999px;
+  background: var(--warning);
+  vertical-align: middle;
 }
 
 .transaction__aside {

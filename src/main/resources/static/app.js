@@ -407,7 +407,7 @@ function renderTransactions(container, items, type, mapper) {
   items.forEach((item) => {
     const model = mapper(item);
     const article = document.createElement("article");
-    article.className = `transaction transaction--${type}`;
+    article.className = `transaction transaction--${type}${model.className ? ` ${model.className}` : ""}`;
     article.innerHTML = `
       <div class="transaction__body">
         <p class="transaction__title">${model.title}</p>
@@ -444,6 +444,32 @@ function hasPendingMsiBalance(item) {
 
 function latestCutForAccount(accountName) {
   return state.accountCuts.find((item) => item.account_name === accountName) || null;
+}
+
+function isExpenseAfterLatestCut(item) {
+  if (!item || item.entry_type === "fixed") {
+    return false;
+  }
+  const setting = state.accountSettings[item.account_name];
+  if (!isCardAccount(setting)) {
+    return false;
+  }
+  const latestCut = latestCutForAccount(item.account_name);
+  if (!latestCut?.cut_date || !item.date) {
+    return false;
+  }
+  return item.date > latestCut.cut_date;
+}
+
+function expenseCutBadge(item) {
+  if (isExpenseAfterLatestCut(item)) {
+    const latestCut = latestCutForAccount(item.account_name);
+    return ` <span class="status-chip status-chip--new-cycle">Nuevo corte desde ${formatDate(latestCut.cut_date)}</span>`;
+  }
+  if (item.is_shifted_by_cut) {
+    return ` <span class="status-chip status-chip--cut">Cuenta en ${formatMonth(item.report_month)}</span>`;
+  }
+  return "";
 }
 
 function startLoading(message) {
@@ -736,11 +762,10 @@ function renderLedgerExpenses() {
   } else {
     pageItems.forEach((item) => {
       const isFixed = item.entry_type === "fixed";
-      const cutBadge = item.is_shifted_by_cut
-        ? ` <span class="status-chip status-chip--cut">Cuenta en ${formatMonth(item.report_month)}</span>`
-        : "";
+      const cutBadge = expenseCutBadge(item);
+      const isNewCycle = isExpenseAfterLatestCut(item);
       const article = document.createElement("article");
-      article.className = "transaction transaction--expense";
+      article.className = `transaction transaction--expense${isNewCycle ? " transaction--new-cycle" : ""}`;
       article.innerHTML = `
         <div class="transaction__body">
           <p class="transaction__title">
@@ -851,13 +876,12 @@ function render() {
   renderCategorySummaryRows(dashboard.expense_by_category);
 
   renderTransactions(elements.recentExpenses, dashboard.recent_expenses.slice(0, 6), "expense", (item) => {
-    const cutBadge = item.is_shifted_by_cut
-      ? ` <span class="status-chip status-chip--cut">Cuenta en ${formatMonth(item.report_month)}</span>`
-      : "";
+    const cutBadge = expenseCutBadge(item);
     return {
       title: item.description,
       meta: `${formatDate(item.date)} · ${item.category_name} · ${item.account_name}${cutBadge}`,
       amount: item.amount,
+      className: isExpenseAfterLatestCut(item) ? "transaction--new-cycle" : "",
     };
   });
 
