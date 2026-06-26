@@ -400,7 +400,11 @@ public class FinanceService {
             }
         }
         Set<String> accounts = new TreeSet<>();
-        accounts.addAll(byAccountExpenses.keySet());
+        byAccountExpenses.forEach((name, amount) -> {
+            if (amount.compareTo(BigDecimal.ZERO) > 0) {
+                accounts.add(name);
+            }
+        });
         byAccountCutSummary.forEach((name, cutSummary) -> {
             if (number(cutSummary.get("payable_cut_amount")).compareTo(BigDecimal.ZERO) > 0
                 || number(cutSummary.get("open_cut_amount")).compareTo(BigDecimal.ZERO) > 0) {
