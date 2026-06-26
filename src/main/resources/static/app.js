@@ -263,6 +263,7 @@ function renderAccountSummaryRows(rows) {
   rows.forEach((row) => {
     const hasMsi = row.msi_amount > 0;
     const hasExpense = row.expense_amount > 0;
+    const hasOpenCut = Number(row.open_cut_amount || 0) > 0;
     const setting = state.accountSettings[row.account_name] || {};
     const payment = state.accountPayments.find((item) => item.account_name === row.account_name);
     const isPaid = payment?.status === "paid";
@@ -274,7 +275,10 @@ function renderAccountSummaryRows(rows) {
     article.className = `metric-row account-card${isPaid ? " account-card--paid" : ""}${hasCurrentMonthCut ? " account-card--cut" : ""}`;
     const breakdownParts = [];
     if (hasExpense) {
-      breakdownParts.push(`${row.uses_cut_cycle ? "Nuevo corte" : "Gastos"} ${formatMoney(row.expense_amount)}`);
+      breakdownParts.push(`${row.uses_cut_cycle ? "Por pagar corte" : "Gastos"} ${formatMoney(row.expense_amount)}`);
+    }
+    if (hasOpenCut) {
+      breakdownParts.push(`Nuevo corte ${formatMoney(row.open_cut_amount)}`);
     }
     if (hasMsi) {
       breakdownParts.push(`MSI ${formatMoney(row.msi_amount)}`);
