@@ -544,6 +544,7 @@ public class FinanceService {
     }
 
     private Map<String, Map<String, Object>> accountCutSummaryAmounts(YearMonth month) {
+        LocalDate previousMonthStart = month.minusMonths(1).atDay(1);
         LocalDate startInclusive = month.atDay(1);
         LocalDate endExclusive = month.plusMonths(1).atDay(1);
         @SuppressWarnings("unchecked")
@@ -611,6 +612,10 @@ public class FinanceService {
                   from finance.expenses e
                   where e.account_id = a.id
                     and (
+                      payable_end.cut_date is not null
+                      or (payable_start.cut_date >= :previousMonthStart and payable_start.cut_date < :startInclusive)
+                    )
+                    and (
                       (payable_start.cut_date is null and e.expense_date >= :startInclusive)
                       or e.expense_date > payable_start.cut_date
                       or (e.expense_date = payable_start.cut_date and e.created_at > payable_start.created_at)
@@ -639,6 +644,7 @@ public class FinanceService {
                 where a.account_type in ('credit', 'store_card')
                   and a.is_active = true
                 """)
+            .setParameter("previousMonthStart", previousMonthStart)
             .setParameter("startInclusive", startInclusive)
             .setParameter("endExclusive", endExclusive)
             .getResultList();
