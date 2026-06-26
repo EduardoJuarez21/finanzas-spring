@@ -484,11 +484,8 @@ public class FinanceService {
                     .map(row -> number(row.get("amount")))
                     .reduce(BigDecimal.ZERO, BigDecimal::add)
             );
-            BigDecimal expense = expenses(month, 500).stream()
-                .filter(row -> !Boolean.TRUE.equals(row.get("is_virtual")))
-                .map(row -> number(row.get("amount")))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal msi = installmentPlans(true).stream()
+            BigDecimal expense = adjustedExpenseForMonth(month, ym);
+            BigDecimal msi = installmentPlans(true, month).stream()
                 .filter(row -> installmentActiveInMonth(row, ym))
                 .map(row -> number(row.get("monthly_payment")))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -504,6 +501,46 @@ public class FinanceService {
             "months", months,
             "totals", map("income", totalIncome, "expense", totalExpense, "msi", totalMsi, "balance", totalIncome.subtract(totalExpense).subtract(totalMsi))
         );
+    }
+
+    private BigDecimal adjustedExpenseForMonth(String month, YearMonth ym) {
+        List<Map<String, Object>> monthlyExpenses = expenses(month, 500);
+        Map<String, BigDecimal> byAccountExpenses = groupSum(monthlyExpenses, "account_name", "amount");
+        Map<String, Map<String, Object>> byAccountCutSummary = accountCutSummaryAmounts(ym);
+        Map<String, BigDecimal> byAccountFixed = new LinkedHashMap<>();
+        Set<String> virtualAccounts = new HashSet<>();
+        for (Map<String, Object> row : monthlyExpenses) {
+            String accountName = String.valueOf(row.get("account_name"));
+            if (Boolean.TRUE.equals(row.get("is_virtual"))) {
+                virtualAccounts.add(accountName);
+            }
+            if ("fixed".equals(row.get("entry_type")) && !"paid".equals(row.get("payment_status"))) {
+                byAccountFixed.merge(accountName, number(row.get("amount")), BigDecimal::add);
+            }
+        }
+        Set<String> accounts = new TreeSet<>();
+        byAccountExpenses.forEach((name, amount) -> {
+            if (amount.compareTo(BigDecimal.ZERO) > 0) {
+                accounts.add(name);
+            }
+        });
+        byAccountCutSummary.forEach((name, cutSummary) -> {
+            if (number(cutSummary.get("payable_cut_amount")).compareTo(BigDecimal.ZERO) > 0
+                || number(cutSummary.get("open_cut_amount")).compareTo(BigDecimal.ZERO) > 0) {
+                accounts.add(name);
+            }
+        });
+        return accounts.stream()
+            .filter(name -> !virtualAccounts.contains(name))
+            .map(name -> {
+                Map<String, Object> cutSummary = byAccountCutSummary.get(name);
+                if (cutSummary == null) {
+                    return byAccountExpenses.getOrDefault(name, BigDecimal.ZERO);
+                }
+                return number(cutSummary.get("payable_cut_amount"))
+                    .add(byAccountFixed.getOrDefault(name, BigDecimal.ZERO));
+            })
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private Map<String, Map<String, Object>> accountCutSummaryAmounts(YearMonth month) {
