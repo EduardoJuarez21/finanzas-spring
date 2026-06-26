@@ -273,16 +273,25 @@ function renderAccountSummaryRows(rows) {
     const canMarkPayment = !row.is_virtual && isCard && row.amount > 0;
     const article = document.createElement("article");
     article.className = `metric-row account-card${isPaid ? " account-card--paid" : ""}${hasCurrentMonthCut ? " account-card--cut" : ""}`;
-    const breakdownParts = [];
+    const payNowRows = [];
     if (hasExpense) {
-      breakdownParts.push(`${row.uses_cut_cycle ? "Por pagar corte" : "Gastos"} ${formatMoney(row.expense_amount)}`);
-    }
-    if (hasOpenCut) {
-      breakdownParts.push(`Nuevo corte ${formatMoney(row.open_cut_amount)}`);
+      payNowRows.push({ label: row.uses_cut_cycle ? "Corte por pagar" : "Gastos", amount: row.expense_amount });
     }
     if (hasMsi) {
-      breakdownParts.push(`MSI ${formatMoney(row.msi_amount)}`);
+      payNowRows.push({ label: "MSI del mes", amount: row.msi_amount });
     }
+    const payNowRowsHtml = payNowRows.map((part) => `
+      <span class="account-breakdown__row">
+        <span>${part.label}</span>
+        <strong>${formatMoney(part.amount)}</strong>
+      </span>
+    `).join("");
+    const openCutHtml = hasOpenCut ? `
+      <span class="account-breakdown__next-cycle">
+        <span>Nuevo corte abierto</span>
+        <strong>${formatMoney(row.open_cut_amount)}</strong>
+      </span>
+    ` : "";
     const virtualIncome = row.is_virtual
       ? state.fixedIncomes.find((item) => item.kind === "in_kind" && item.account_name === row.account_name)
       : null;
@@ -324,8 +333,10 @@ function renderAccountSummaryRows(rows) {
           ${isPaid ? ' <span class="status-chip status-chip--paid">Pagada</span>' : ""}
         </span>
         <span class="account-breakdown">
+          <span class="account-breakdown__total-label">Total a pagar ahora</span>
           <strong class="account-breakdown__total">${formatMoney(row.amount)}</strong>
-          ${breakdownParts.length ? `<span class="account-breakdown__detail">${breakdownParts.join(" · ")}</span>` : ""}
+          ${payNowRowsHtml ? `<span class="account-breakdown__rows">${payNowRowsHtml}</span>` : ""}
+          ${openCutHtml}
           ${isPaid && payment.paid_date ? `<span class="account-breakdown__detail">Pagado el ${formatDate(payment.paid_date)}</span>` : ""}
         </span>
       </button>

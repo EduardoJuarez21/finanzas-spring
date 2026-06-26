@@ -614,7 +614,7 @@ body.is-loading {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 6px;
 }
 
 .account-breakdown--virtual {
@@ -630,6 +630,53 @@ body.is-loading {
   font-size: 1rem;
   font-weight: 700;
   color: var(--ink);
+}
+
+.account-breakdown__total-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.account-breakdown__rows {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-width: min(100%, 260px);
+}
+
+.account-breakdown__row,
+.account-breakdown__next-cycle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  font-size: 0.82rem;
+}
+
+.account-breakdown__row span,
+.account-breakdown__next-cycle span {
+  color: var(--muted);
+}
+
+.account-breakdown__row strong,
+.account-breakdown__next-cycle strong {
+  font-size: 0.86rem;
+}
+
+.account-breakdown__next-cycle {
+  margin-top: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(209, 143, 47, 0.12);
+  border: 1px solid rgba(209, 143, 47, 0.24);
+}
+
+.account-breakdown__next-cycle strong {
+  color: var(--warning);
 }
 
 .virtual-account-row__header {
