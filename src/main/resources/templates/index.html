@@ -19,12 +19,25 @@
 </head>
 <body>
   <div class="page-shell">
+    <nav class="section-nav" aria-label="Secciones principales">
+      <a href="#dashboardSection">Dashboard</a>
+      <a href="#quickExpenseSection">Movimientos</a>
+      <a href="#planningSection">Planeacion</a>
+      <a href="#msiSection">MSI</a>
+      <a href="#adminGroup">Administracion</a>
+    </nav>
+
     <main class="layout">
+      <div class="section-group section-group--compact">
+        <p class="section-kicker">Acciones rapidas</p>
+        <h2>Captura y planeacion inmediata</h2>
+      </div>
+
       <section id="incomeSection" class="panel">
         <details class="settings-panel card-panel">
           <summary class="settings-panel__summary">
             <div>
-              <p class="section-kicker">Entradas</p>
+              <p class="section-kicker">Movimientos</p>
               <h2>Registrar ingreso</h2>
             </div>
             <span class="settings-panel__hint"></span>
@@ -57,7 +70,7 @@
         <details class="settings-panel card-panel" open>
           <summary class="settings-panel__summary">
             <div>
-              <p class="section-kicker">Uso diario</p>
+              <p class="section-kicker">Movimientos</p>
               <h2>Registrar gasto</h2>
             </div>
             <span class="settings-panel__hint"></span>
@@ -204,6 +217,11 @@
         </div>
       </section>
 
+      <div id="movementsGroup" class="section-group">
+        <p class="section-kicker">Movimientos</p>
+        <h2>Consulta y ajuste del mes</h2>
+      </div>
+
       <section id="expenseLedgerSection" class="panel panel--wide">
         <details id="expenseLedgerPanel" class="settings-panel">
           <summary class="settings-panel__summary">
@@ -236,6 +254,26 @@
         </details>
       </section>
 
+      <section id="incomeLedgerSection" class="panel panel--wide">
+        <details class="settings-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Movimientos</p>
+              <h2>Ingresos del mes</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <div id="incomeList" class="transaction-list"></div>
+          </div>
+        </details>
+      </section>
+
+      <div id="planningGroup" class="section-group">
+        <p class="section-kicker">Planeacion</p>
+        <h2>Ingresos y gastos recurrentes</h2>
+      </div>
+
       <section id="fixedExpensesSection" class="panel panel--wide">
         <details class="settings-panel">
           <summary class="settings-panel__summary">
@@ -247,6 +285,43 @@
           </summary>
           <div class="settings-panel__body">
             <div id="fixedExpenseList" class="table-list"></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="fixedIncomeSection" class="panel panel--wide">
+        <details class="settings-panel">
+          <summary class="settings-panel__summary">
+            <div>
+              <p class="section-kicker">Planeación</p>
+              <h2>Ingresos fijos</h2>
+            </div>
+            <span class="settings-panel__hint"></span>
+          </summary>
+          <div class="settings-panel__body">
+            <form id="fixedIncomeForm" class="form-grid form-grid--compact">
+              <label class="form-grid__full">
+                Nombre
+                <input name="name" type="text" maxlength="120" placeholder="Ej. Salario Elisa, Salario Lalo" required>
+              </label>
+              <label>
+                Monto mensual
+                <input name="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+              </label>
+              <label>
+                Fuente de ingreso
+                <select name="source" id="fixedIncomeSource" required></select>
+              </label>
+              <label>
+                Tipo
+                <select name="kind">
+                  <option value="cash">Efectivo</option>
+                  <option value="in_kind">Especie (vales, beneficios)</option>
+                </select>
+              </label>
+              <button class="button button--secondary form-grid__full" type="submit">Agregar ingreso fijo</button>
+            </form>
+            <div id="fixedIncomeList" class="table-list" style="margin-top:16px"></div>
           </div>
         </details>
       </section>
@@ -264,17 +339,22 @@
           <a href="#incomeSection">Ingreso</a>
           <a href="#planningSection">Gasto fijo</a>
           <a href="#fixedExpensesSection">Fijos</a>
-          <a href="#categorySection">Categorias</a>
-          <a href="#yearlySection">Anual</a>
-          <a href="#cardsSection">Tarjetas</a>
+          <a href="#fixedIncomeSection">Ingresos fijos</a>
+          <a href="#yearlySection">Reportes</a>
+          <a href="#adminGroup">Admin</a>
         </div>
       </section>
+
+      <div id="msiGroup" class="section-group">
+        <p class="section-kicker">MSI / credito</p>
+        <h2>Financiamiento y mensualidades</h2>
+      </div>
 
       <section id="msiRegisterSection" class="panel panel--wide">
         <details class="settings-panel card-panel">
           <summary class="settings-panel__summary">
             <div>
-              <p class="section-kicker">Financiamiento</p>
+              <p class="section-kicker">MSI / credito</p>
               <h2>Registrar MSI</h2>
             </div>
             <span class="settings-panel__hint"></span>
@@ -319,7 +399,7 @@
         <details class="settings-panel">
           <summary class="settings-panel__summary">
             <div>
-              <p class="section-kicker">Financiamiento</p>
+              <p class="section-kicker">MSI / credito</p>
               <h2>Meses sin intereses (MSI)</h2>
             </div>
             <span class="settings-panel__hint"></span>
@@ -344,12 +424,17 @@
         </details>
       </section>
 
+      <div id="adminGroup" class="section-group">
+        <p class="section-kicker">Administracion</p>
+        <h2>Catalogos, cuentas y configuracion</h2>
+      </div>
+
       <section id="virtualAccountsSection" class="panel panel--wide" hidden>
         <details class="settings-panel">
           <summary class="settings-panel__summary">
             <div>
-              <p class="section-kicker">Especie</p>
-              <h2>Cuentas de vales</h2>
+              <p class="section-kicker">Administracion</p>
+              <h2>Vales / beneficios</h2>
             </div>
             <span class="settings-panel__hint"></span>
           </summary>
@@ -363,7 +448,7 @@
         <details class="settings-panel card-panel">
           <summary class="settings-panel__summary">
             <div>
-              <p class="section-kicker">Catálogo</p>
+              <p class="section-kicker">Administracion</p>
               <h2>Categorías de gasto</h2>
             </div>
             <span class="settings-panel__hint"></span>
@@ -389,78 +474,11 @@
         </details>
       </section>
 
-      <section id="fixedIncomeSection" class="panel panel--wide">
-        <details class="settings-panel">
-          <summary class="settings-panel__summary">
-            <div>
-              <p class="section-kicker">Planeación</p>
-              <h2>Ingresos fijos</h2>
-            </div>
-            <span class="settings-panel__hint"></span>
-          </summary>
-          <div class="settings-panel__body">
-            <form id="fixedIncomeForm" class="form-grid form-grid--compact">
-              <label class="form-grid__full">
-                Nombre
-                <input name="name" type="text" maxlength="120" placeholder="Ej. Salario Elisa, Salario Lalo" required>
-              </label>
-              <label>
-                Monto mensual
-                <input name="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
-              </label>
-              <label>
-                Fuente de ingreso
-                <select name="source" id="fixedIncomeSource" required></select>
-              </label>
-              <label>
-                Tipo
-                <select name="kind">
-                  <option value="cash">Efectivo</option>
-                  <option value="in_kind">Especie (vales, beneficios)</option>
-                </select>
-              </label>
-              <button class="button button--secondary form-grid__full" type="submit">Agregar ingreso fijo</button>
-            </form>
-            <div id="fixedIncomeList" class="table-list" style="margin-top:16px"></div>
-          </div>
-        </details>
-      </section>
-
-      <section id="incomeLedgerSection" class="panel panel--wide">
-        <details class="settings-panel">
-          <summary class="settings-panel__summary">
-            <div>
-              <p class="section-kicker">Movimientos</p>
-              <h2>Ingresos del mes</h2>
-            </div>
-            <span class="settings-panel__hint"></span>
-          </summary>
-          <div class="settings-panel__body">
-            <div id="incomeList" class="transaction-list"></div>
-          </div>
-        </details>
-      </section>
-
-      <section id="yearlySection" class="panel panel--wide">
-        <div class="panel__header">
-          <div>
-            <p class="section-kicker">Anual</p>
-            <h2>Balance del año</h2>
-          </div>
-          <label class="app-bar__month">
-            <span>Año</span>
-            <input id="yearPicker" type="number" min="2020" max="2099" inputmode="numeric" style="width:90px">
-          </label>
-        </div>
-        <div id="yearlyStats" class="stats-grid stats-grid--4"></div>
-        <div id="yearlyTable" class="yearly-table"></div>
-      </section>
-
       <section id="cardsSection" class="panel panel--wide">
         <details class="settings-panel">
           <summary class="settings-panel__summary">
             <div>
-              <p class="section-kicker">Tarjetas</p>
+              <p class="section-kicker">Administracion</p>
               <h2>Cortes y pagos</h2>
             </div>
             <span class="settings-panel__hint"></span>
@@ -481,6 +499,26 @@
             <div id="accountCycleList" class="table-list"></div>
           </div>
         </details>
+      </section>
+
+      <div id="reportsGroup" class="section-group">
+        <p class="section-kicker">Reportes</p>
+        <h2>Lectura historica</h2>
+      </div>
+
+      <section id="yearlySection" class="panel panel--wide">
+        <div class="panel__header">
+          <div>
+            <p class="section-kicker">Reportes</p>
+            <h2>Balance del año</h2>
+          </div>
+          <label class="app-bar__month">
+            <span>Año</span>
+            <input id="yearPicker" type="number" min="2020" max="2099" inputmode="numeric" style="width:90px">
+          </label>
+        </div>
+        <div id="yearlyStats" class="stats-grid stats-grid--4"></div>
+        <div id="yearlyTable" class="yearly-table"></div>
       </section>
     </main>
   </div>

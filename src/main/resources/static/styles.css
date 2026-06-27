@@ -82,6 +82,41 @@ body.is-loading {
   padding: 24px;
 }
 
+.section-nav {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: 0 12px 34px rgba(64, 54, 36, 0.10);
+  backdrop-filter: blur(14px);
+}
+
+.section-nav a {
+  display: inline-grid;
+  place-items: center;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.section-nav a:hover,
+.section-nav a:focus {
+  background: var(--pill-bg);
+  outline: none;
+}
+
 .app-bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -191,6 +226,21 @@ body.is-loading {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 22px;
   align-items: start;
+}
+
+.section-group {
+  grid-column: 1 / -1;
+  padding: 8px 2px 0;
+}
+
+.section-group--compact {
+  padding-top: 0;
+}
+
+.section-group h2 {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.1rem;
 }
 
 .mobile-nav {
@@ -1148,6 +1198,10 @@ html.light select {
     padding: 10px 10px 86px;
   }
 
+  .section-nav {
+    display: none;
+  }
+
   .layout {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -1170,21 +1224,27 @@ html.light select {
     display: none;
   }
 
-  #quickExpenseSection { order: 1; }
-  #dashboardSection { order: 2; }
-  #expenseLedgerSection { order: 3; }
-  #moreSection { order: 4; }
-  #incomeSection { order: 5; }
-  #msiSection { order: 6; }
-  #msiRegisterSection { order: 7; }
-  #planningSection { order: 8; }
-  #fixedExpensesSection { order: 9; }
-  #virtualAccountsSection { order: 10; }
-  #categorySection { order: 11; }
+  .section-group--compact { order: 1; }
+  #quickExpenseSection { order: 2; }
+  #dashboardSection { order: 3; }
+  #movementsGroup { order: 4; }
+  #expenseLedgerSection { order: 5; }
+  #incomeSection { order: 6; }
+  #incomeLedgerSection { order: 7; }
+  #moreSection { order: 8; }
+  #planningGroup { order: 9; }
+  #planningSection { order: 10; }
+  #fixedExpensesSection { order: 11; }
   #fixedIncomeSection { order: 12; }
-  #incomeLedgerSection { order: 13; }
-  #yearlySection { order: 14; }
-  #cardsSection { order: 15; }
+  #msiGroup { order: 13; }
+  #msiSection { order: 14; }
+  #msiRegisterSection { order: 15; }
+  #reportsGroup { order: 16; }
+  #yearlySection { order: 17; }
+  #adminGroup { order: 18; }
+  #virtualAccountsSection { order: 19; }
+  #categorySection { order: 20; }
+  #cardsSection { order: 21; }
 
   .app-bar {
     padding: 16px;
