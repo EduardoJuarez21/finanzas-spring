@@ -1243,6 +1243,10 @@ html.light select {
     color: var(--ink);
   }
 
+  .mobile-tab-hidden {
+    display: none !important;
+  }
+
   .layout {
     grid-template-columns: 1fr;
     gap: 12px;

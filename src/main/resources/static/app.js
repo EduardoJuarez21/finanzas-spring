@@ -1929,41 +1929,95 @@ function setupSectionTabs() {
   if (!nav) return;
 
   const links = Array.from(nav.querySelectorAll("a[href^='#']"));
-  const sections = links
-    .map((link) => ({
-      link,
-      target: document.querySelector(link.getAttribute("href")),
-    }))
-    .filter((item) => item.target);
+  const mobileQuery = window.matchMedia("(max-width: 760px)");
+  const tabTargets = {
+    "#dashboardSection": ["dashboardSection"],
+    "#quickExpenseSection": [
+      "quickActionsGroup",
+      "quickExpenseSection",
+      "incomeSection",
+      "movementsGroup",
+      "expenseLedgerSection",
+      "incomeLedgerSection",
+    ],
+    "#planningSection": [
+      "planningSection",
+      "planningGroup",
+      "fixedExpensesSection",
+      "fixedIncomeSection",
+    ],
+    "#msiSection": ["msiGroup", "msiRegisterSection", "msiSection"],
+    "#reportsGroup": ["reportsGroup", "yearlySection"],
+    "#adminGroup": ["adminGroup", "virtualAccountsSection", "categorySection", "cardsSection"],
+  };
+  const mobileNavTargets = {
+    "#quickExpenseSection": "#quickExpenseSection",
+    "#dashboardSection": "#dashboardSection",
+    "#expenseLedgerSection": "#quickExpenseSection",
+    "#moreSection": "#adminGroup",
+  };
+  const managedIds = Array.from(new Set([...Object.values(tabTargets).flat(), "moreSection"]));
+  const managedSections = managedIds
+    .map((id) => document.getElementById(id))
+    .filter(Boolean);
+  let activeHref = "#dashboardSection";
 
   function setActive(link) {
     links.forEach((item) => item.classList.toggle("is-active", item === link));
     link.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }
 
-  links.forEach((link) => {
-    link.addEventListener("click", () => setActive(link));
-  });
+  function showTab(href, options = {}) {
+    const nextHref = tabTargets[href] ? href : "#dashboardSection";
+    const activeLink = links.find((link) => link.getAttribute("href") === nextHref);
+    if (!activeLink) return;
 
-  if (!("IntersectionObserver" in window)) {
-    if (links[0]) setActive(links[0]);
-    return;
+    activeHref = nextHref;
+    setActive(activeLink);
+
+    if (!mobileQuery.matches) {
+      managedSections.forEach((section) => section.classList.remove("mobile-tab-hidden"));
+      return;
+    }
+
+    const visibleIds = new Set(tabTargets[nextHref]);
+    managedSections.forEach((section) => {
+      section.classList.toggle("mobile-tab-hidden", !visibleIds.has(section.id));
+    });
+
+    if (options.scroll !== false) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
-  const observer = new IntersectionObserver((entries) => {
-    const visible = entries
-      .filter((entry) => entry.isIntersecting)
-      .sort((a, b) => Math.abs(a.boundingClientRect.top) - Math.abs(b.boundingClientRect.top))[0];
-    if (!visible) return;
-    const match = sections.find((item) => item.target === visible.target);
-    if (match) setActive(match.link);
-  }, {
-    rootMargin: "-18% 0px -68% 0px",
-    threshold: 0,
+  links.forEach((link) => {
+    link.addEventListener("click", (event) => {
+      if (!mobileQuery.matches) {
+        setActive(link);
+        return;
+      }
+      event.preventDefault();
+      showTab(link.getAttribute("href"));
+    });
   });
 
-  sections.forEach((item) => observer.observe(item.target));
-  if (links[0]) setActive(links[0]);
+  document.querySelectorAll(".mobile-nav a[href^='#'], .mobile-more-grid a[href^='#']").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      if (!mobileQuery.matches) return;
+      const targetHref = mobileNavTargets[link.getAttribute("href")] || link.getAttribute("href");
+      if (!tabTargets[targetHref]) return;
+      event.preventDefault();
+      showTab(targetHref);
+    });
+  });
+
+  const onModeChange = () => showTab(activeHref, { scroll: false });
+  if (mobileQuery.addEventListener) {
+    mobileQuery.addEventListener("change", onModeChange);
+  } else {
+    mobileQuery.addListener(onModeChange);
+  }
+  showTab(activeHref, { scroll: false });
 }
 
 setupSectionTabs();
