@@ -1924,6 +1924,49 @@ function setupThemeToggle() {
   });
 }
 
+function setupSectionTabs() {
+  const nav = document.querySelector(".section-nav");
+  if (!nav) return;
+
+  const links = Array.from(nav.querySelectorAll("a[href^='#']"));
+  const sections = links
+    .map((link) => ({
+      link,
+      target: document.querySelector(link.getAttribute("href")),
+    }))
+    .filter((item) => item.target);
+
+  function setActive(link) {
+    links.forEach((item) => item.classList.toggle("is-active", item === link));
+    link.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }
+
+  links.forEach((link) => {
+    link.addEventListener("click", () => setActive(link));
+  });
+
+  if (!("IntersectionObserver" in window)) {
+    if (links[0]) setActive(links[0]);
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    const visible = entries
+      .filter((entry) => entry.isIntersecting)
+      .sort((a, b) => Math.abs(a.boundingClientRect.top) - Math.abs(b.boundingClientRect.top))[0];
+    if (!visible) return;
+    const match = sections.find((item) => item.target === visible.target);
+    if (match) setActive(match.link);
+  }, {
+    rootMargin: "-18% 0px -68% 0px",
+    threshold: 0,
+  });
+
+  sections.forEach((item) => observer.observe(item.target));
+  if (links[0]) setActive(links[0]);
+}
+
+setupSectionTabs();
 setupThemeToggle();
 setupForms();
 refreshFinanceViews();

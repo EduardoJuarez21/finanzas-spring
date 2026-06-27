@@ -112,7 +112,8 @@ body.is-loading {
 }
 
 .section-nav a:hover,
-.section-nav a:focus {
+.section-nav a:focus,
+.section-nav a.is-active {
   background: var(--pill-bg);
   outline: none;
 }
@@ -1199,7 +1200,47 @@ html.light select {
   }
 
   .section-nav {
+    position: sticky;
+    top: 0;
+    z-index: 850;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    align-items: center;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    margin: -10px -10px 12px;
+    padding: calc(10px + env(safe-area-inset-top)) 10px 8px;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    background: color-mix(in srgb, var(--bg-alt) 86%, transparent);
+    box-shadow: none;
+    backdrop-filter: blur(14px);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .section-nav::-webkit-scrollbar {
     display: none;
+  }
+
+  .section-nav a {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 8px 12px;
+    border-radius: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+
+  .section-nav a:hover,
+  .section-nav a:focus,
+  .section-nav a.is-active {
+    background: transparent;
+    border-bottom-color: var(--accent);
+    color: var(--ink);
   }
 
   .layout {
