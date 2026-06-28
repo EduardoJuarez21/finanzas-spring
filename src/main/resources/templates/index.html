@@ -183,7 +183,7 @@
         </div>
 
         <div class="dashboard-grid">
-          <details class="mini-panel settings-panel" open>
+          <details class="mini-panel mini-panel--mobile-secondary settings-panel" open>
             <summary class="mini-panel__title settings-panel__summary">
               <div>
                 <h3>Gastos por cuenta</h3>
@@ -205,7 +205,7 @@
             <div id="categorySummary" class="stack-list" style="margin-top:12px"></div>
           </details>
 
-          <details class="mini-panel mini-panel--recent settings-panel" open>
+          <details class="mini-panel mini-panel--recent mini-panel--mobile-secondary settings-panel" open>
             <summary class="mini-panel__title settings-panel__summary">
               <div>
                 <h3>Gastos recientes</h3>
@@ -420,6 +420,12 @@
                 <strong id="msiPendingTotal">$0.00</strong>
               </article>
             </div>
+            <label class="msi-filter">
+              <span>Cuenta</span>
+              <select id="msiAccountFilter">
+                <option value="">Todas</option>
+              </select>
+            </label>
             <div id="msiList" class="table-list"></div>
           </div>
         </details>
@@ -526,9 +532,9 @@
 
   <nav class="mobile-nav" aria-label="Navegacion principal">
     <a href="#quickExpenseSection"><span aria-hidden="true">+</span>Gasto</a>
-    <a href="#dashboardSection"><span aria-hidden="true">$</span>Resumen</a>
-    <a href="#expenseLedgerSection"><span aria-hidden="true">=</span>Movs.</a>
-    <a href="#moreSection"><span aria-hidden="true">...</span>Mas</a>
+    <a href="#incomeSection"><span aria-hidden="true">$</span>Ingreso</a>
+    <a href="#msiRegisterSection"><span aria-hidden="true">=</span>MSI</a>
+    <a href="#expenseLedgerSection"><span aria-hidden="true">...</span>Buscar</a>
   </nav>
 
   <dialog id="editExpenseDialog" class="edit-dialog">

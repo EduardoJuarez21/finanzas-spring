@@ -26,6 +26,7 @@ const elements = {
   msiActiveCount: document.querySelector("#msiActiveCount"),
   msiRemainingMonths: document.querySelector("#msiRemainingMonths"),
   msiPendingTotal: document.querySelector("#msiPendingTotal"),
+  msiAccountFilter: document.querySelector("#msiAccountFilter"),
   accountSummary: document.querySelector("#accountSummary"),
   categorySummary: document.querySelector("#categorySummary"),
   recentExpenses: document.querySelector("#recentExpenses"),
@@ -96,6 +97,10 @@ const ledger = {
   showAll: false,
   page: 0,
   pageSize: 10,
+};
+
+const filters = {
+  msiAccount: "",
 };
 
 elements.yearPicker.value = new Date().getFullYear();
@@ -1031,10 +1036,26 @@ function render() {
 
   elements.msiList.innerHTML = "";
   const activeMsiPlans = state.msiPlans.filter(hasPendingMsiBalance);
+  const accountOptions = Array.from(new Set(activeMsiPlans.map((item) => item.account_name || "Sin cuenta"))).sort();
+  if (elements.msiAccountFilter) {
+    elements.msiAccountFilter.innerHTML = [
+      `<option value="">Todas</option>`,
+      ...accountOptions.map((accountName) => `<option value="${accountName}">${accountName}</option>`),
+    ].join("");
+    if (filters.msiAccount && accountOptions.includes(filters.msiAccount)) {
+      elements.msiAccountFilter.value = filters.msiAccount;
+    } else {
+      filters.msiAccount = "";
+      elements.msiAccountFilter.value = "";
+    }
+  }
+  const visibleMsiPlans = filters.msiAccount
+    ? activeMsiPlans.filter((item) => (item.account_name || "Sin cuenta") === filters.msiAccount)
+    : activeMsiPlans;
   if (!activeMsiPlans.length) {
     elements.msiList.appendChild(cloneEmptyState());
   } else {
-    const groups = [...activeMsiPlans]
+    const groups = [...visibleMsiPlans]
       .sort((a, b) => (a.account_name || "").localeCompare(b.account_name || "") || (a.end_month || "").localeCompare(b.end_month || ""))
       .reduce((acc, item) => {
         const key = item.account_name || "Sin cuenta";
@@ -1042,6 +1063,10 @@ function render() {
         acc[key].push(item);
         return acc;
       }, {});
+
+    if (!visibleMsiPlans.length) {
+      elements.msiList.appendChild(cloneEmptyState());
+    }
 
     Object.entries(groups).forEach(([accountName, items]) => {
       const section = document.createElement("section");
@@ -1802,6 +1827,13 @@ function setupForms() {
     renderLedgerExpenses();
   });
 
+  if (elements.msiAccountFilter) {
+    elements.msiAccountFilter.addEventListener("change", () => {
+      filters.msiAccount = elements.msiAccountFilter.value;
+      render();
+    });
+  }
+
   elements.expenseCategoryForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -1952,6 +1984,8 @@ function setupSectionTabs() {
   };
   const mobileNavTargets = {
     "#quickExpenseSection": "#quickExpenseSection",
+    "#incomeSection": "#quickExpenseSection",
+    "#msiRegisterSection": "#msiSection",
     "#dashboardSection": "#dashboardSection",
     "#expenseLedgerSection": "#quickExpenseSection",
     "#moreSection": "#adminGroup",
@@ -1990,6 +2024,26 @@ function setupSectionTabs() {
     }
   }
 
+  function focusMobileTarget(href) {
+    const target = document.querySelector(href);
+    if (!target) return;
+
+    const details = target.querySelector("details");
+    if (details) details.open = true;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    const focusTargets = {
+      "#quickExpenseSection": '#expenseForm input[name="amount"]',
+      "#incomeSection": '#incomeForm input[name="amount"]',
+      "#msiRegisterSection": '#msiForm input[name="name"]',
+      "#expenseLedgerSection": "#expenseAmountSearch",
+    };
+    const focusTarget = document.querySelector(focusTargets[href]);
+    if (focusTarget) {
+      setTimeout(() => focusTarget.focus({ preventScroll: true }), 320);
+    }
+  }
+
   links.forEach((link) => {
     link.addEventListener("click", (event) => {
       if (!mobileQuery.matches) {
@@ -2007,7 +2061,8 @@ function setupSectionTabs() {
       const targetHref = mobileNavTargets[link.getAttribute("href")] || link.getAttribute("href");
       if (!tabTargets[targetHref]) return;
       event.preventDefault();
-      showTab(targetHref);
+      showTab(targetHref, { scroll: false });
+      focusMobileTarget(link.getAttribute("href"));
     });
   });
 

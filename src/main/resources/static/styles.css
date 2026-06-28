@@ -485,6 +485,11 @@ body.is-loading {
   margin-bottom: 16px;
 }
 
+.msi-filter {
+  margin-bottom: 14px;
+  max-width: 280px;
+}
+
 .section-divider {
   border: none;
   border-top: 1px solid var(--line);
@@ -1434,6 +1439,10 @@ html.light select {
     border-radius: 14px;
   }
 
+  #dashboardSection .mini-panel--mobile-secondary {
+    display: none;
+  }
+
   input,
   select,
   .button {
@@ -1476,6 +1485,10 @@ html.light select {
   .virtual-account-row__meters,
   .msi-card__metrics {
     grid-template-columns: 1fr;
+  }
+
+  .msi-filter {
+    max-width: none;
   }
 
   .msi-card__header,
