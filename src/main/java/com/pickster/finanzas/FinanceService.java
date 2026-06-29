@@ -562,8 +562,18 @@ public class FinanceService {
                   select c.cut_date, c.created_at
                   from finance.account_cut_events c
                   where c.account_id = a.id
-                    and c.cut_date >= :previousMonthStart
-                    and c.cut_date < :startInclusive
+                    and (
+                      (
+                        lower(trim(a.name)) = 'stori'
+                        and c.cut_date >= :previousMonthStart
+                        and c.cut_date < :startInclusive
+                      )
+                      or (
+                        lower(trim(a.name)) <> 'stori'
+                        and c.cut_date >= :startInclusive
+                        and c.cut_date < :endExclusive
+                      )
+                    )
                   order by c.cut_date desc, c.created_at desc
                   limit 1
                 ) payable_end on true
@@ -583,7 +593,18 @@ public class FinanceService {
                   select c.cut_date, c.created_at
                   from finance.account_cut_events c
                   where c.account_id = a.id
-                    and c.cut_date < :endExclusive
+                    and (
+                      (
+                        lower(trim(a.name)) = 'stori'
+                        and c.cut_date < :endExclusive
+                      )
+                      or (
+                        lower(trim(a.name)) <> 'stori'
+                        and payable_end.cut_date is not null
+                        and c.cut_date = payable_end.cut_date
+                        and c.created_at = payable_end.created_at
+                      )
+                    )
                   order by c.cut_date desc, c.created_at desc
                   limit 1
                 ) open_anchor on true
