@@ -199,11 +199,6 @@ function isCardAccount(setting) {
   return setting && (setting.type === "credit" || setting.type === "store_card");
 }
 
-function usesTwoMonthPostCutover(accountName) {
-  const normalized = String(accountName || "").trim().toLowerCase();
-  return normalized === "stori";
-}
-
 function cloneEmptyState() {
   return elements.emptyStateTemplate.content.firstElementChild.cloneNode(true);
 }
@@ -787,9 +782,7 @@ function renderExpenseAccountHint() {
 
   if (!setting.cutoffDay) {
     if (latestCut) {
-      elements.expenseAccountHint.textContent = usesTwoMonthPostCutover(accountName)
-        ? `Ultimo corte manual: ${formatDate(latestCut.cut_date)}. Los gastos posteriores se van al mes de pago +2.`
-        : `Ultimo corte manual: ${formatDate(latestCut.cut_date)}. Los gastos posteriores se van al siguiente mes.`;
+      elements.expenseAccountHint.textContent = `Ultimo corte manual: ${formatDate(latestCut.cut_date)}. El corte cerrado se paga el siguiente mes; los gastos posteriores quedan en el nuevo ciclo.`;
       return;
     }
     elements.expenseAccountHint.textContent = "Esta tarjeta no tiene configurado dia de corte todavia.";

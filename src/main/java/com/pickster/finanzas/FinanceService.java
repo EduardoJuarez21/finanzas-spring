@@ -554,7 +554,7 @@ public class FinanceService {
                   payable_start.cut_date as payable_cut_start,
                   payable_end.cut_date as payable_cut_end,
                   payable_total.amount as payable_cut_amount,
-                  month_cut.cut_date as open_cut_start,
+                  open_anchor.cut_date as open_cut_start,
                   next_cut.cut_date as open_cut_end,
                   open_total.amount as open_cut_amount
                 from finance.accounts a
@@ -562,47 +562,39 @@ public class FinanceService {
                   select c.cut_date, c.created_at
                   from finance.account_cut_events c
                   where c.account_id = a.id
-                    and c.cut_date >= :startInclusive
-                    and c.cut_date < :endExclusive
-                  order by c.cut_date desc, c.created_at desc
-                  limit 1
-                ) month_cut on true
-                left join lateral (
-                  select c.cut_date, c.created_at
-                  from finance.account_cut_events c
-                  where c.account_id = a.id
+                    and c.cut_date >= :previousMonthStart
                     and c.cut_date < :startInclusive
                   order by c.cut_date desc, c.created_at desc
                   limit 1
-                ) latest_before_month on true
+                ) payable_end on true
                 left join lateral (
                   select c.cut_date, c.created_at
                   from finance.account_cut_events c
                   where c.account_id = a.id
-                    and month_cut.cut_date is not null
+                    and payable_end.cut_date is not null
                     and (
-                      c.cut_date < month_cut.cut_date
-                      or (c.cut_date = month_cut.cut_date and c.created_at < month_cut.created_at)
+                      c.cut_date < payable_end.cut_date
+                      or (c.cut_date = payable_end.cut_date and c.created_at < payable_end.created_at)
                     )
                   order by c.cut_date desc, c.created_at desc
                   limit 1
-                ) previous_cut on true
-                left join lateral (
-                  select
-                    coalesce(previous_cut.cut_date, latest_before_month.cut_date) as cut_date,
-                    coalesce(previous_cut.created_at, latest_before_month.created_at) as created_at
                 ) payable_start on true
-                left join lateral (
-                  select month_cut.cut_date, month_cut.created_at
-                ) payable_end on month_cut.cut_date is not null
                 left join lateral (
                   select c.cut_date, c.created_at
                   from finance.account_cut_events c
                   where c.account_id = a.id
-                    and month_cut.cut_date is not null
+                    and c.cut_date < :endExclusive
+                  order by c.cut_date desc, c.created_at desc
+                  limit 1
+                ) open_anchor on true
+                left join lateral (
+                  select c.cut_date, c.created_at
+                  from finance.account_cut_events c
+                  where c.account_id = a.id
+                    and open_anchor.cut_date is not null
                     and (
-                      c.cut_date > month_cut.cut_date
-                      or (c.cut_date = month_cut.cut_date and c.created_at > month_cut.created_at)
+                      c.cut_date > open_anchor.cut_date
+                      or (c.cut_date = open_anchor.cut_date and c.created_at > open_anchor.created_at)
                     )
                   order by c.cut_date asc, c.created_at asc
                   limit 1
@@ -611,12 +603,9 @@ public class FinanceService {
                   select coalesce(sum(e.amount), 0) as amount
                   from finance.expenses e
                   where e.account_id = a.id
+                    and payable_end.cut_date is not null
                     and (
-                      payable_end.cut_date is not null
-                      or (payable_start.cut_date >= :previousMonthStart and payable_start.cut_date < :startInclusive)
-                    )
-                    and (
-                      (payable_start.cut_date is null and e.expense_date >= :startInclusive)
+                      payable_start.cut_date is null
                       or e.expense_date > payable_start.cut_date
                       or (e.expense_date = payable_start.cut_date and e.created_at > payable_start.created_at)
                     )
@@ -630,10 +619,10 @@ public class FinanceService {
                   select coalesce(sum(e.amount), 0) as amount
                   from finance.expenses e
                   where e.account_id = a.id
-                    and month_cut.cut_date is not null
+                    and open_anchor.cut_date is not null
                     and (
-                      e.expense_date > month_cut.cut_date
-                      or (e.expense_date = month_cut.cut_date and e.created_at > month_cut.created_at)
+                      e.expense_date > open_anchor.cut_date
+                      or (e.expense_date = open_anchor.cut_date and e.created_at > open_anchor.created_at)
                     )
                     and (
                       next_cut.cut_date is null
