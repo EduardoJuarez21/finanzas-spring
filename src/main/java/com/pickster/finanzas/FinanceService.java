@@ -117,6 +117,7 @@ public class FinanceService {
 
     public List<Map<String, Object>> fixedExpenses(String month) {
         YearMonth ym = month == null ? null : requireMonth(month);
+        Map<Long, FixedExpensePayment> payments = ym == null ? Map.of() : fixedExpensePaymentsByMonth(ym.toString());
         return em.createQuery("""
                 select f from FixedExpense f
                 join fetch f.account a
@@ -126,7 +127,7 @@ public class FinanceService {
                 """, FixedExpense.class)
             .getResultList()
             .stream()
-            .map(f -> fixedExpenseJson(f, ym))
+            .map(f -> fixedExpenseJson(f, ym, payments))
             .toList();
     }
 
@@ -140,7 +141,7 @@ public class FinanceService {
         item.active = true;
         em.persist(item);
         em.flush();
-        return fixedExpenseJson(item, null);
+        return fixedExpenseJson(item, null, Map.of());
     }
 
     public Map<String, Object> deactivateFixedExpense(Map<String, Object> payload) {
@@ -432,6 +433,7 @@ public class FinanceService {
                 "msi_amount", msiAmount,
                 "uses_cut_cycle", cutSummary != null,
                 "open_cut_amount", openCutAmount,
+                "next_payable_amount", cutSummary == null ? null : cutSummary.get("next_payable_amount"),
                 "payable_cut_start", cutSummary == null ? null : cutSummary.get("payable_cut_start"),
                 "payable_cut_end", cutSummary == null ? null : cutSummary.get("payable_cut_end"),
                 "open_cut_start", cutSummary == null ? null : cutSummary.get("open_cut_start"),
@@ -465,7 +467,7 @@ public class FinanceService {
         ));
         data.put("expense_by_account", expenseByAccount);
         data.put("expense_by_category", expenseByCategory);
-        data.put("recent_expenses", expenses(month, 10));
+        data.put("recent_expenses", monthlyExpenses.stream().limit(10).toList());
         return data;
     }
 
@@ -475,17 +477,17 @@ public class FinanceService {
         BigDecimal totalExpense = BigDecimal.ZERO;
         BigDecimal totalMsi = BigDecimal.ZERO;
         BigDecimal cumulative = BigDecimal.ZERO;
+        BigDecimal fixedIncomeCash = fixedIncomes(true).stream()
+            .filter(row -> "cash".equals(row.get("kind")))
+            .map(row -> number(row.get("amount")))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<Map<String, Object>> allActivePlans = installmentPlans(true);
         for (int m = 1; m <= 12; m++) {
             String month = "%04d-%02d".formatted(year, m);
             YearMonth ym = YearMonth.parse(month);
-            BigDecimal income = sum(incomes(month, 500), "amount").add(
-                fixedIncomes(true).stream()
-                    .filter(row -> "cash".equals(row.get("kind")))
-                    .map(row -> number(row.get("amount")))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-            );
+            BigDecimal income = sum(incomes(month, 500), "amount").add(fixedIncomeCash);
             BigDecimal expense = adjustedExpenseForMonth(month, ym);
-            BigDecimal msi = installmentPlans(true, month).stream()
+            BigDecimal msi = allActivePlans.stream()
                 .filter(row -> installmentActiveInMonth(row, ym))
                 .map(row -> number(row.get("monthly_payment")))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -556,7 +558,8 @@ public class FinanceService {
                   payable_total.amount as payable_cut_amount,
                   open_anchor.cut_date as open_cut_start,
                   next_cut.cut_date as open_cut_end,
-                  open_total.amount as open_cut_amount
+                  open_total.amount as open_cut_amount,
+                  next_payable_total.amount as next_payable_amount
                 from finance.accounts a
                 left join lateral (
                   select c.cut_date, c.created_at
@@ -640,6 +643,25 @@ public class FinanceService {
                       or (e.expense_date = next_cut.cut_date and e.created_at < next_cut.created_at)
                     )
                 ) open_total on true
+                left join lateral (
+                  select coalesce(sum(e.amount), 0) as amount
+                  from finance.expenses e
+                  where e.account_id = a.id
+                    and payable_end.cut_date is not null
+                    and open_anchor.cut_date is not null
+                    and (
+                      open_anchor.cut_date > payable_end.cut_date
+                      or (open_anchor.cut_date = payable_end.cut_date and open_anchor.created_at > payable_end.created_at)
+                    )
+                    and (
+                      e.expense_date > payable_end.cut_date
+                      or (e.expense_date = payable_end.cut_date and e.created_at > payable_end.created_at)
+                    )
+                    and (
+                      e.expense_date < open_anchor.cut_date
+                      or (e.expense_date = open_anchor.cut_date and e.created_at < open_anchor.created_at)
+                    )
+                ) next_payable_total on true
                 where a.account_type in ('credit', 'store_card')
                   and a.is_active = true
                 """)
@@ -656,7 +678,8 @@ public class FinanceService {
                 "payable_cut_amount", row[3],
                 "open_cut_start", row[4],
                 "open_cut_end", row[5],
-                "open_cut_amount", row[6]
+                "open_cut_amount", row[6],
+                "next_payable_amount", row[7]
             ));
         }
         return result;
@@ -716,8 +739,8 @@ public class FinanceService {
             "source_name", item.source.name, "notes", item.notes, "created_at", item.createdAt);
     }
 
-    private Map<String, Object> fixedExpenseJson(FixedExpense item, YearMonth ym) {
-        Optional<FixedExpensePayment> payment = ym == null ? Optional.empty() : findFixedExpensePayment(item, ym.toString());
+    private Map<String, Object> fixedExpenseJson(FixedExpense item, YearMonth ym, Map<Long, FixedExpensePayment> paymentsById) {
+        Optional<FixedExpensePayment> payment = ym == null ? Optional.empty() : Optional.ofNullable(paymentsById.get(item.id));
         return map(
             "id", item.id,
             "name", item.name,
@@ -843,6 +866,21 @@ public class FinanceService {
             .setMaxResults(1)
             .getResultStream()
             .findFirst();
+    }
+
+    private Map<Long, FixedExpensePayment> fixedExpensePaymentsByMonth(String month) {
+        List<FixedExpensePayment> list = em.createQuery("""
+                select p from FixedExpensePayment p
+                join fetch p.fixedExpense f
+                where p.paymentMonth = :month
+                """, FixedExpensePayment.class)
+            .setParameter("month", month)
+            .getResultList();
+        Map<Long, FixedExpensePayment> byId = new HashMap<>();
+        for (FixedExpensePayment p : list) {
+            byId.put(p.fixedExpense.id, p);
+        }
+        return byId;
     }
 
     private Optional<AccountPaymentStatus> findAccountPayment(Account account, String month) {

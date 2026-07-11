@@ -265,6 +265,8 @@ function renderAccountSummaryRows(rows) {
     const hasExpense = row.expense_amount > 0;
     const hasFixed = Number(row.fixed_amount || 0) > 0;
     const hasOpenCut = Number(row.open_cut_amount || 0) > 0;
+    const nextPayable = Number(row.next_payable_amount || 0);
+    const hasNextPayable = nextPayable > 0;
     const setting = state.accountSettings[row.account_name] || {};
     const payment = state.accountPayments.find((item) => item.account_name === row.account_name);
     const isPaid = payment?.status === "paid";
@@ -290,6 +292,12 @@ function renderAccountSummaryRows(rows) {
         <strong>${formatMoney(part.amount)}</strong>
       </span>
     `).join("");
+    const nextPayableHtml = hasNextPayable ? `
+      <span class="account-breakdown__next-cycle">
+        <span>Próximo corte</span>
+        <strong>${formatMoney(nextPayable)}</strong>
+      </span>
+    ` : "";
     const openCutHtml = hasOpenCut ? `
       <span class="account-breakdown__next-cycle">
         <span>Nuevo corte abierto</span>
@@ -340,6 +348,7 @@ function renderAccountSummaryRows(rows) {
           <span class="account-breakdown__total-label">Total a pagar ahora</span>
           <strong class="account-breakdown__total">${formatMoney(row.amount)}</strong>
           ${payNowRowsHtml ? `<span class="account-breakdown__rows">${payNowRowsHtml}</span>` : ""}
+          ${nextPayableHtml}
           ${openCutHtml}
           ${isPaid && payment.paid_date ? `<span class="account-breakdown__detail">Pagado el ${formatDate(payment.paid_date)}</span>` : ""}
         </span>
