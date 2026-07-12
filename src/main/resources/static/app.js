@@ -415,29 +415,27 @@ function renderCardsStrip(rows) {
         </div>
         <strong class="account-pill__amount${isPreview ? " account-pill__amount--preview" : ""}">${formatMoney(displayAmount)}</strong>
         ${isPreview
-          ? `<span class="account-pill__detail">Acumulado · registra el corte para cerrar</span>`
+          ? `<span class="account-pill__detail">Acumulado · sin corte</span>`
           : detailParts.length ? `<span class="account-pill__detail">${detailParts.join(' · ')}</span>` : ''}
+        ${latestCut ? `<span class="account-pill__cut-date">Último corte: ${formatDate(latestCut.cut_date)}</span>` : ''}
         ${nextPayable > 0 ? `<span class="account-pill__next">Próx. ${formatMoney(nextPayable)}</span>` : ''}
         ${isPaid && payment.paid_date ? `<span class="account-pill__detail">Pagado el ${formatDate(payment.paid_date)}</span>` : ''}
       </div>
-      ${isPreview ? `
-        <div class="account-pill__action">
-          <button
-            class="button button--ghost button--small register-cut-btn"
-            type="button"
-            data-account-name="${row.account_name}"
-          >Registrar corte</button>
-        </div>
-      ` : payable > 0 ? `
-        <div class="account-pill__action">
+      <div class="account-pill__action">
+        ${payable > 0 ? `
           <button
             class="button ${isPaid ? 'button--ghost' : 'button--secondary'} button--small account-payment-status-btn"
             type="button"
             data-account-name="${row.account_name}"
             data-next-status="${isPaid ? 'pending' : 'paid'}"
           >${isPaid ? 'Marcar pendiente' : 'Marcar pagada'}</button>
-        </div>
-      ` : ''}
+        ` : ''}
+        <button
+          class="button button--ghost button--small register-cut-btn"
+          type="button"
+          data-account-name="${row.account_name}"
+        >${isPreview ? 'Registrar corte' : '+ Corte'}</button>
+      </div>
     `;
     elements.cardsStrip.appendChild(pill);
   });

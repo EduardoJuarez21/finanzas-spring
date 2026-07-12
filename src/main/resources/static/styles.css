@@ -582,6 +582,19 @@ body.is-loading {
   line-height: 1.4;
 }
 
+.account-pill__cut-date {
+  font-size: 0.72rem;
+  color: var(--muted);
+  opacity: 0.72;
+}
+
+.account-pill__action {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
 .account-pill__next {
   display: inline-block;
   font-size: 0.74rem;
@@ -591,10 +604,6 @@ body.is-loading {
   border: 1px solid rgba(209, 143, 47, 0.24);
   color: var(--warning);
   width: fit-content;
-}
-
-.account-pill__action {
-  margin-top: 4px;
 }
 
 .dashboard-grid {
