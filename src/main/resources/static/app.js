@@ -385,29 +385,42 @@ function renderCardsStrip(rows) {
     const latestCut = latestCutForAccount(row.account_name);
     const hasCurrentMonthCut = latestCut && monthFromDate(latestCut.cut_date) === state.month;
     const nextPayable = Number(row.next_payable_amount || 0);
+    const openCut = Number(row.open_cut_amount || 0);
+    const payable = Number(row.amount || 0);
+
+    // Preview mode: no hay saldo pagadero aún pero hay acumulado en el ciclo abierto
+    const isPreview = payable === 0 && openCut > 0;
+    const displayAmount = isPreview ? openCut : payable;
+
     const detailParts = [];
-    if (Number(row.expense_amount) > 0) detailParts.push(`Gastos ${formatMoney(row.expense_amount)}`);
-    if (Number(row.fixed_amount) > 0) detailParts.push(`Fijos ${formatMoney(row.fixed_amount)}`);
-    if (Number(row.msi_amount) > 0) detailParts.push(`MSI ${formatMoney(row.msi_amount)}`);
+    if (!isPreview) {
+      if (Number(row.expense_amount) > 0) detailParts.push(`Gastos ${formatMoney(row.expense_amount)}`);
+      if (Number(row.fixed_amount) > 0) detailParts.push(`Fijos ${formatMoney(row.fixed_amount)}`);
+      if (Number(row.msi_amount) > 0) detailParts.push(`MSI ${formatMoney(row.msi_amount)}`);
+    }
 
     const pill = document.createElement("article");
-    pill.className = `account-pill${isPaid ? " account-pill--paid" : ""}${hasCurrentMonthCut ? " account-pill--cut" : ""}`;
+    pill.className = `account-pill${isPreview ? " account-pill--preview" : ""}${isPaid ? " account-pill--paid" : ""}${hasCurrentMonthCut ? " account-pill--cut" : ""}`;
     pill.innerHTML = `
       <div class="account-pill__body" data-account-name="${row.account_name}">
         <div class="account-pill__header">
           <span class="account-pill__name">${row.account_name}</span>
           ${isPaid
             ? '<span class="status-chip status-chip--paid">Pagada</span>'
-            : hasCurrentMonthCut
-              ? '<span class="status-chip status-chip--cut">Con corte</span>'
-              : ''}
+            : isPreview
+              ? '<span class="status-chip status-chip--new-cycle">Sin corte</span>'
+              : hasCurrentMonthCut
+                ? '<span class="status-chip status-chip--cut">Con corte</span>'
+                : ''}
         </div>
-        <strong class="account-pill__amount">${formatMoney(row.amount)}</strong>
-        ${detailParts.length ? `<span class="account-pill__detail">${detailParts.join(' · ')}</span>` : ''}
+        <strong class="account-pill__amount${isPreview ? " account-pill__amount--preview" : ""}">${formatMoney(displayAmount)}</strong>
+        ${isPreview
+          ? `<span class="account-pill__detail">Acumulado · registra el corte para cerrar</span>`
+          : detailParts.length ? `<span class="account-pill__detail">${detailParts.join(' · ')}</span>` : ''}
         ${nextPayable > 0 ? `<span class="account-pill__next">Próx. ${formatMoney(nextPayable)}</span>` : ''}
         ${isPaid && payment.paid_date ? `<span class="account-pill__detail">Pagado el ${formatDate(payment.paid_date)}</span>` : ''}
       </div>
-      ${row.amount > 0 ? `
+      ${payable > 0 ? `
         <div class="account-pill__action">
           <button
             class="button ${isPaid ? 'button--ghost' : 'button--secondary'} button--small account-payment-status-btn"

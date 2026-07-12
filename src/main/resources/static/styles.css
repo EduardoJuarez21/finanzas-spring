@@ -527,6 +527,20 @@ body.is-loading {
   background: linear-gradient(135deg, rgba(13, 104, 145, 0.10), rgba(45, 122, 75, 0.10));
 }
 
+.account-pill--preview {
+  border-style: dashed;
+  border-color: rgba(209, 143, 47, 0.40);
+  background: rgba(209, 143, 47, 0.06);
+}
+
+.account-pill--preview:hover {
+  border-color: rgba(209, 143, 47, 0.60);
+}
+
+.account-pill__amount--preview {
+  color: var(--warning);
+}
+
 .account-pill__body {
   flex: 1;
   display: flex;
