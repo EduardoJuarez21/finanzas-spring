@@ -1097,15 +1097,14 @@ body.is-loading {
 
 .status-chip--estimated {
   margin-left: 6px;
-  background: rgba(100, 116, 139, 0.14);
+  background: rgba(100, 116, 139, 0.12);
   color: var(--text-muted);
-  border-color: rgba(100, 116, 139, 0.28);
-  font-style: italic;
+  border-color: rgba(100, 116, 139, 0.26);
 }
 
 .account-pill--estimated {
-  opacity: 0.8;
-  border-style: dashed;
+  background: rgba(100, 116, 139, 0.05);
+  border-color: rgba(100, 116, 139, 0.22);
 }
 
 .transaction {

@@ -436,9 +436,9 @@ function renderCardsStrip(rows) {
                   ? '<span class="status-chip status-chip--cut">Con corte</span>'
                   : ''}
         </div>
-        <strong class="account-pill__amount${isPreview || isEstimated ? " account-pill__amount--preview" : ""}">${formatMoney(displayAmount)}</strong>
+        <strong class="account-pill__amount${isPreview ? " account-pill__amount--preview" : ""}">${formatMoney(displayAmount)}</strong>
         ${isEstimated
-          ? `<span class="account-pill__detail">Acumulado sin corte formal · estimado</span>`
+          ? `<span class="account-pill__detail">Acumulado pendiente de corte</span>`
           : isPreview
             ? `<span class="account-pill__detail">Acumulado · sin corte</span>`
             : detailParts.length ? `<span class="account-pill__detail">${detailParts.join(' · ')}</span>` : ''}
