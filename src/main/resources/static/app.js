@@ -27,6 +27,8 @@ const elements = {
   msiRemainingMonths: document.querySelector("#msiRemainingMonths"),
   msiPendingTotal: document.querySelector("#msiPendingTotal"),
   msiAccountFilter: document.querySelector("#msiAccountFilter"),
+  cardsStrip: document.querySelector("#cardsStrip"),
+  totalCardsPending: document.querySelector("#totalCardsPending"),
   accountSummary: document.querySelector("#accountSummary"),
   categorySummary: document.querySelector("#categorySummary"),
   recentExpenses: document.querySelector("#recentExpenses"),
@@ -365,6 +367,58 @@ function renderAccountSummaryRows(rows) {
       ` : ""}
     `;
     elements.accountSummary.appendChild(article);
+  });
+}
+
+function renderCardsStrip(rows) {
+  elements.cardsStrip.innerHTML = "";
+  const cardRows = (rows || []).filter((row) => {
+    if (row.is_virtual) return false;
+    const s = state.accountSettings[row.account_name] || {};
+    return s.type === "credit" || s.type === "store_card";
+  });
+  if (!cardRows.length) return;
+
+  cardRows.forEach((row) => {
+    const payment = state.accountPayments.find((p) => p.account_name === row.account_name);
+    const isPaid = payment?.status === "paid";
+    const latestCut = latestCutForAccount(row.account_name);
+    const hasCurrentMonthCut = latestCut && monthFromDate(latestCut.cut_date) === state.month;
+    const nextPayable = Number(row.next_payable_amount || 0);
+    const detailParts = [];
+    if (Number(row.expense_amount) > 0) detailParts.push(`Gastos ${formatMoney(row.expense_amount)}`);
+    if (Number(row.fixed_amount) > 0) detailParts.push(`Fijos ${formatMoney(row.fixed_amount)}`);
+    if (Number(row.msi_amount) > 0) detailParts.push(`MSI ${formatMoney(row.msi_amount)}`);
+
+    const pill = document.createElement("article");
+    pill.className = `account-pill${isPaid ? " account-pill--paid" : ""}${hasCurrentMonthCut ? " account-pill--cut" : ""}`;
+    pill.innerHTML = `
+      <div class="account-pill__body" data-account-name="${row.account_name}">
+        <div class="account-pill__header">
+          <span class="account-pill__name">${row.account_name}</span>
+          ${isPaid
+            ? '<span class="status-chip status-chip--paid">Pagada</span>'
+            : hasCurrentMonthCut
+              ? '<span class="status-chip status-chip--cut">Con corte</span>'
+              : ''}
+        </div>
+        <strong class="account-pill__amount">${formatMoney(row.amount)}</strong>
+        ${detailParts.length ? `<span class="account-pill__detail">${detailParts.join(' · ')}</span>` : ''}
+        ${nextPayable > 0 ? `<span class="account-pill__next">Próx. ${formatMoney(nextPayable)}</span>` : ''}
+        ${isPaid && payment.paid_date ? `<span class="account-pill__detail">Pagado el ${formatDate(payment.paid_date)}</span>` : ''}
+      </div>
+      ${row.amount > 0 ? `
+        <div class="account-pill__action">
+          <button
+            class="button ${isPaid ? 'button--ghost' : 'button--secondary'} button--small account-payment-status-btn"
+            type="button"
+            data-account-name="${row.account_name}"
+            data-next-status="${isPaid ? 'pending' : 'paid'}"
+          >${isPaid ? 'Marcar pendiente' : 'Marcar pagada'}</button>
+        </div>
+      ` : ''}
+    `;
+    elements.cardsStrip.appendChild(pill);
   });
 }
 
@@ -904,6 +958,18 @@ function render() {
   elements.msiRemainingMonths.textContent = String(dashboard.msi.remaining_months || 0);
   elements.msiPendingTotal.textContent = formatMoney(dashboard.msi.pending_total);
 
+  const cardsPendingTotal = (dashboard.expense_by_account || [])
+    .filter((row) => {
+      if (row.is_virtual) return false;
+      const s = state.accountSettings[row.account_name] || {};
+      if (s.type !== "credit" && s.type !== "store_card") return false;
+      const p = state.accountPayments.find((pay) => pay.account_name === row.account_name);
+      return p?.status !== "paid";
+    })
+    .reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  elements.totalCardsPending.textContent = formatMoney(cardsPendingTotal);
+
+  renderCardsStrip(dashboard.expense_by_account);
   renderAccountSummaryRows(dashboard.expense_by_account);
 
   // Panel de cuentas de vales (in_kind fixed incomes vinculadas a cuenta virtual)
@@ -946,7 +1012,7 @@ function render() {
 
   renderCategorySummaryRows(dashboard.expense_by_category);
 
-  renderTransactions(elements.recentExpenses, dashboard.recent_expenses.slice(0, 6), "expense", (item) => {
+  renderTransactions(elements.recentExpenses, dashboard.recent_expenses.slice(0, 5), "expense", (item) => {
     const cutBadge = expenseCutBadge(item);
     return {
       title: item.description,
@@ -1880,7 +1946,7 @@ function setupForms() {
     }
   });
 
-  elements.accountSummary.addEventListener("click", async (event) => {
+  elements.cardsStrip.addEventListener("click", async (event) => {
     const statusButton = event.target.closest(".account-payment-status-btn");
     if (statusButton) {
       statusButton.disabled = true;
@@ -1903,11 +1969,10 @@ function setupForms() {
       return;
     }
 
-    const button = event.target.closest("[data-account-name]");
-    if (!button) {
-      return;
+    const body = event.target.closest(".account-pill__body");
+    if (body) {
+      focusAccountBreakdown(body.dataset.accountName);
     }
-    focusAccountBreakdown(button.dataset.accountName);
   });
 
   elements.categorySummary.addEventListener("click", (event) => {

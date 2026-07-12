@@ -409,7 +409,7 @@ body.is-loading {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 18px;
 }
@@ -458,9 +458,134 @@ body.is-loading {
   background: linear-gradient(135deg, rgba(209, 143, 47, 0.2), var(--stat-end));
 }
 
+.stat-card--card {
+  background: linear-gradient(135deg, rgba(200, 85, 61, 0.15), var(--stat-end));
+}
+
+.cards-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 2px 2px 10px;
+  margin-bottom: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cards-strip::-webkit-scrollbar {
+  height: 4px;
+}
+
+.cards-strip::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cards-strip::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 99px;
+}
+
+.cards-strip:empty {
+  display: none;
+}
+
+.account-pill {
+  flex: 0 0 auto;
+  min-width: 190px;
+  max-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-mid);
+  border: 1px solid var(--line);
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.account-pill:hover {
+  transform: translateY(-2px);
+  border-color: rgba(22, 105, 122, 0.28);
+}
+
+.account-pill--paid {
+  border-color: rgba(45, 122, 75, 0.32);
+  background: rgba(45, 122, 75, 0.08);
+}
+
+.account-pill--paid:hover {
+  border-color: rgba(45, 122, 75, 0.44);
+}
+
+.account-pill--cut {
+  border-color: rgba(13, 104, 145, 0.32);
+  background: rgba(13, 104, 145, 0.08);
+}
+
+.account-pill--cut.account-pill--paid {
+  background: linear-gradient(135deg, rgba(13, 104, 145, 0.10), rgba(45, 122, 75, 0.10));
+}
+
+.account-pill__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.account-pill__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.account-pill__name {
+  font-weight: 700;
+  font-size: 0.84rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.account-pill__amount {
+  display: block;
+  font-size: 1.3rem;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.account-pill--paid .account-pill__amount {
+  color: var(--success);
+}
+
+.account-pill__detail {
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.account-pill__next {
+  display: inline-block;
+  font-size: 0.74rem;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(209, 143, 47, 0.12);
+  border: 1px solid rgba(209, 143, 47, 0.24);
+  color: var(--warning);
+  width: fit-content;
+}
+
+.account-pill__action {
+  margin-top: 4px;
+}
+
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -1170,7 +1295,6 @@ html.light select {
 @media (max-width: 1120px) {
   .app-bar,
   .stats-grid,
-  .dashboard-grid,
   .ledger-grid,
   .msi-summary {
     grid-template-columns: 1fr;
@@ -1402,6 +1526,17 @@ html.light select {
     order: -1;
   }
 
+  .cards-strip {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .account-pill {
+    min-width: 160px;
+    max-width: 200px;
+    padding: 12px;
+  }
+
   .stat-card {
     min-height: 0;
     padding: 12px;
@@ -1431,6 +1566,7 @@ html.light select {
   }
 
   .dashboard-grid {
+    grid-template-columns: 1fr;
     gap: 10px;
   }
 

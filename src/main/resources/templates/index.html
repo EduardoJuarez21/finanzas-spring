@@ -175,6 +175,11 @@
             <strong id="fixedCommitment">$0.00</strong>
             <small>Mensualidades activas de compras a meses sin intereses.</small>
           </article>
+          <article class="stat-card stat-card--card">
+            <span>Tarjetas por pagar</span>
+            <strong id="totalCardsPending">$0.00</strong>
+            <small>Total pendiente en tarjetas de crédito y tienda.</small>
+          </article>
           <article class="stat-card stat-card--balance">
             <span>Balance actual</span>
             <strong id="currentBalance">$0.00</strong>
@@ -182,18 +187,10 @@
           </article>
         </div>
 
-        <div class="dashboard-grid">
-          <details class="mini-panel settings-panel" open>
-            <summary class="mini-panel__title settings-panel__summary">
-              <div>
-                <h3>Gastos por cuenta</h3>
-                <span>Pasivos, medios de pago y MSI</span>
-              </div>
-              <span class="settings-panel__hint"></span>
-            </summary>
-            <div id="accountSummary" class="stack-list" style="margin-top:12px"></div>
-          </details>
+        <div id="cardsStrip" class="cards-strip"></div>
+        <div id="accountSummary" hidden></div>
 
+        <div class="dashboard-grid">
           <details class="mini-panel mini-panel--mobile-secondary settings-panel" open>
             <summary class="mini-panel__title settings-panel__summary">
               <div>
