@@ -415,9 +415,8 @@ public class FinanceService {
         });
         accounts.addAll(byAccountMsi.keySet());
 
-        // open_cut es relevante en el mes actual y el siguiente (saldos que aún no han cortado)
-        // A partir de 2+ meses en el futuro, no aplica proyectar el acumulado actual
-        boolean showOpenCut = !ym.isAfter(YearMonth.now().plusMonths(1));
+        boolean isNextMonth = ym.equals(YearMonth.now().plusMonths(1));
+        LocalDate currentMonthStart = YearMonth.now().atDay(1);
         List<Map<String, Object>> expenseByAccount = accounts.stream().map(name -> {
             BigDecimal expenseAmount = byAccountExpenses.getOrDefault(name, BigDecimal.ZERO);
             Map<String, Object> cutSummary = byAccountCutSummary.get(name);
@@ -425,18 +424,40 @@ public class FinanceService {
             BigDecimal fixedAmount = BigDecimal.ZERO;
             if (cutSummary != null) {
                 expenseAmount = number(cutSummary.get("payable_cut_amount"));
-                openCutAmount = showOpenCut ? number(cutSummary.get("open_cut_amount")) : BigDecimal.ZERO;
+                BigDecimal rawOpenCut = number(cutSummary.get("open_cut_amount"));
+                if (!ym.isAfter(YearMonth.now())) {
+                    // Mes actual o pasado: siempre mostrar open_cut
+                    openCutAmount = rawOpenCut;
+                } else if (isNextMonth) {
+                    // Siguiente mes: solo mostrar open_cut si empezó a acumular este mes
+                    // (open_cut_start >= primer día del mes actual)
+                    Object openCutStart = cutSummary.get("open_cut_start");
+                    LocalDate openCutStartDate = openCutStart == null ? null
+                        : openCutStart instanceof LocalDate ld ? ld
+                        : ((java.sql.Date) openCutStart).toLocalDate();
+                    boolean startedThisMonth = openCutStartDate != null
+                        && !openCutStartDate.isBefore(currentMonthStart);
+                    openCutAmount = startedThisMonth ? rawOpenCut : BigDecimal.ZERO;
+                }
+                // 2+ meses en el futuro: open_cut = 0 (default)
                 fixedAmount = byAccountFixed.getOrDefault(name, BigDecimal.ZERO);
             }
             BigDecimal msiAmount = byAccountMsi.getOrDefault(name, BigDecimal.ZERO);
+            // Estimado: open_cut de un ciclo anterior visible en mes siguiente (ej. STORI)
+            boolean isEstimated = isNextMonth && cutSummary != null
+                && expenseAmount.compareTo(BigDecimal.ZERO) == 0
+                && openCutAmount.compareTo(BigDecimal.ZERO) == 0
+                && number(cutSummary.get("open_cut_amount")).compareTo(BigDecimal.ZERO) > 0;
+            BigDecimal estimatedAmount = isEstimated ? number(cutSummary.get("open_cut_amount")) : BigDecimal.ZERO;
             return map(
                 "account_name", name,
-                "amount", expenseAmount.add(fixedAmount).add(msiAmount),
+                "amount", expenseAmount.add(fixedAmount).add(msiAmount).add(estimatedAmount),
                 "expense_amount", expenseAmount,
                 "fixed_amount", fixedAmount,
                 "msi_amount", msiAmount,
                 "uses_cut_cycle", cutSummary != null,
                 "open_cut_amount", openCutAmount,
+                "estimated_amount", estimatedAmount,
                 "next_payable_amount", cutSummary == null ? null : cutSummary.get("next_payable_amount"),
                 "payable_cut_start", cutSummary == null ? null : cutSummary.get("payable_cut_start"),
                 "payable_cut_end", cutSummary == null ? null : cutSummary.get("payable_cut_end"),

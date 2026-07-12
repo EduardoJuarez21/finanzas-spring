@@ -1095,6 +1095,19 @@ body.is-loading {
   border-color: rgba(120, 120, 140, 0.24);
 }
 
+.status-chip--estimated {
+  margin-left: 6px;
+  background: rgba(100, 116, 139, 0.14);
+  color: var(--text-muted);
+  border-color: rgba(100, 116, 139, 0.28);
+  font-style: italic;
+}
+
+.account-pill--estimated {
+  opacity: 0.8;
+  border-style: dashed;
+}
+
 .transaction {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
