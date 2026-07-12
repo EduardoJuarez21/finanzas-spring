@@ -455,12 +455,13 @@ function renderCardsStrip(rows) {
             data-account-name="${row.account_name}"
             data-next-status="${isPaid ? 'pending' : 'paid'}"
           >${isPaid ? 'Marcar pendiente' : 'Marcar pagada'}</button>
-        ` : ''}
-        <button
-          class="button button--ghost button--small register-cut-btn"
-          type="button"
-          data-account-name="${row.account_name}"
-        >${isPreview ? 'Registrar corte' : '+ Corte'}</button>
+        ` : `
+          <button
+            class="button button--ghost button--small register-cut-btn"
+            type="button"
+            data-account-name="${row.account_name}"
+          >${isPreview || isEstimated ? 'Registrar corte' : '+ Corte'}</button>
+        `}
       </div>
     `;
     elements.cardsStrip.appendChild(pill);
