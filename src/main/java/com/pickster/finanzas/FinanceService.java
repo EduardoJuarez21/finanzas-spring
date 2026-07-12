@@ -417,6 +417,9 @@ public class FinanceService {
 
         boolean isNextMonth = ym.equals(YearMonth.now().plusMonths(1));
         LocalDate currentMonthStart = YearMonth.now().atDay(1);
+        // Para isEstimated: necesitamos saber qué tarjetas tienen corte formal en el mes actual
+        Map<String, Map<String, Object>> currentMonthCutSummary =
+            isNextMonth ? accountCutSummaryAmounts(YearMonth.now()) : Map.of();
         List<Map<String, Object>> expenseByAccount = accounts.stream().map(name -> {
             BigDecimal expenseAmount = byAccountExpenses.getOrDefault(name, BigDecimal.ZERO);
             Map<String, Object> cutSummary = byAccountCutSummary.get(name);
@@ -443,11 +446,18 @@ public class FinanceService {
                 fixedAmount = byAccountFixed.getOrDefault(name, BigDecimal.ZERO);
             }
             BigDecimal msiAmount = byAccountMsi.getOrDefault(name, BigDecimal.ZERO);
-            // Estimado: open_cut de un ciclo anterior visible en mes siguiente (ej. STORI)
+            // Estimado: open_cut de ciclo anterior visible en mes siguiente SOLO si la tarjeta
+            // ya tiene un corte formal en el mes actual (su open_cut es el SIGUIENTE ciclo,
+            // no la obligación del mes actual). Ej: STORI tiene payable en julio → estimado en agosto.
+            // HSBC 2 NOW no tiene payable en julio → su open_cut ES julio, no agosto.
+            Map<String, Object> currentCutSummary = currentMonthCutSummary.get(name);
+            boolean hasCurrentMonthPayable = currentCutSummary != null
+                && number(currentCutSummary.get("payable_cut_amount")).compareTo(BigDecimal.ZERO) > 0;
             boolean isEstimated = isNextMonth && cutSummary != null
                 && expenseAmount.compareTo(BigDecimal.ZERO) == 0
                 && openCutAmount.compareTo(BigDecimal.ZERO) == 0
-                && number(cutSummary.get("open_cut_amount")).compareTo(BigDecimal.ZERO) > 0;
+                && number(cutSummary.get("open_cut_amount")).compareTo(BigDecimal.ZERO) > 0
+                && hasCurrentMonthPayable;
             BigDecimal estimatedAmount = isEstimated ? number(cutSummary.get("open_cut_amount")) : BigDecimal.ZERO;
             return map(
                 "account_name", name,
