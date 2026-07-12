@@ -1368,7 +1368,7 @@ function yearlyReferenceMonth(year) {
 
 function yearlyReportStartMonth(year) {
   const reportCreatedYear = 2026;
-  const reportCreatedMonth = "2026-06";
+  const reportCreatedMonth = "2026-07";
   const numericYear = Number(year);
   if (numericYear < reportCreatedYear) {
     return `${String(year).padStart(4, "0")}-13`;
