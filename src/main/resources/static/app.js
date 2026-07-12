@@ -437,7 +437,7 @@ function renderCardsStrip(rows) {
           ? `<span class="account-pill__detail">Acumulado · sin corte</span>`
           : detailParts.length ? `<span class="account-pill__detail">${detailParts.join(' · ')}</span>` : ''}
         ${latestCut ? `<span class="account-pill__cut-date">Último corte: ${formatDate(latestCut.cut_date)}</span>` : ''}
-        ${openCut > 0 && !isPreview ? `<span class="account-pill__next">Acumulando ${formatMoney(openCut)}</span>` : ''}
+        ${openCut > 0 && !isPreview ? `<span class="account-pill__next">Próximo corte ${formatMoney(openCut)}</span>` : ''}
         ${nextPayable > 0 ? `<span class="account-pill__next">En tránsito ${formatMoney(nextPayable)}</span>` : ''}
         ${isPaid && payment.paid_date ? `<span class="account-pill__detail">Pagado el ${formatDate(payment.paid_date)}</span>` : ''}
       </div>
