@@ -542,7 +542,10 @@ public class FinanceService {
             .map(name -> byAccountExpenses.getOrDefault(name, BigDecimal.ZERO))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Tarjetas: payable_cut si hay corte formal, open_cut si no (misma regla que dashboard)
+        // open_cut solo aplica en mes actual o pasado: en meses futuros no hay transacciones reales
+        boolean isCurrentOrPast = !ym.isAfter(YearMonth.now());
+
+        // Tarjetas: payable_cut si hay corte formal, open_cut si no (solo mes actual/pasado)
         BigDecimal creditTotal = accounts.stream()
             .filter(name -> !virtualAccounts.contains(name) && !debitAccounts.contains(name))
             .map(name -> {
@@ -553,9 +556,10 @@ public class FinanceService {
                 BigDecimal payable = number(cutSummary.get("payable_cut_amount"));
                 BigDecimal fixed = byAccountFixed.getOrDefault(name, BigDecimal.ZERO);
                 BigDecimal openCut = number(cutSummary.get("open_cut_amount"));
-                return payable.compareTo(BigDecimal.ZERO) > 0
-                    ? payable.add(fixed)
-                    : openCut.add(fixed);
+                if (payable.compareTo(BigDecimal.ZERO) > 0) {
+                    return payable.add(fixed);
+                }
+                return isCurrentOrPast ? openCut.add(fixed) : fixed;
             })
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
