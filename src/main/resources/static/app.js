@@ -420,7 +420,15 @@ function renderCardsStrip(rows) {
         ${nextPayable > 0 ? `<span class="account-pill__next">Próx. ${formatMoney(nextPayable)}</span>` : ''}
         ${isPaid && payment.paid_date ? `<span class="account-pill__detail">Pagado el ${formatDate(payment.paid_date)}</span>` : ''}
       </div>
-      ${payable > 0 ? `
+      ${isPreview ? `
+        <div class="account-pill__action">
+          <button
+            class="button button--ghost button--small register-cut-btn"
+            type="button"
+            data-account-name="${row.account_name}"
+          >Registrar corte</button>
+        </div>
+      ` : payable > 0 ? `
         <div class="account-pill__action">
           <button
             class="button ${isPaid ? 'button--ghost' : 'button--secondary'} button--small account-payment-status-btn"
@@ -1960,6 +1968,32 @@ function setupForms() {
   });
 
   elements.cardsStrip.addEventListener("click", async (event) => {
+    const registerCutBtn = event.target.closest(".register-cut-btn");
+    if (registerCutBtn) {
+      const cutDate = window.prompt(
+        `Fecha de corte para ${registerCutBtn.dataset.accountName}:`,
+        todayISO()
+      );
+      if (!cutDate) return;
+      registerCutBtn.disabled = true;
+      try {
+        await withLoading("Registrando corte...", async () => {
+          await apiFetch("/account-cuts", {
+            method: "POST",
+            body: JSON.stringify({
+              account_name: registerCutBtn.dataset.accountName,
+              cut_date: cutDate,
+            }),
+          });
+          await refreshFinanceViews();
+        });
+      } catch (error) {
+        window.alert(`No se pudo registrar el corte: ${error.message}`);
+        registerCutBtn.disabled = false;
+      }
+      return;
+    }
+
     const statusButton = event.target.closest(".account-payment-status-btn");
     if (statusButton) {
       statusButton.disabled = true;
@@ -2060,7 +2094,7 @@ function setupSectionTabs() {
     ],
     "#msiSection": ["msiGroup", "msiRegisterSection", "msiSection"],
     "#reportsGroup": ["reportsGroup", "yearlySection"],
-    "#adminGroup": ["adminGroup", "virtualAccountsSection", "categorySection", "cardsSection"],
+    "#adminGroup": ["adminGroup", "virtualAccountsSection", "categorySection"],
   };
   const mobileNavTargets = {
     "#quickExpenseSection": "#quickExpenseSection",
