@@ -415,7 +415,9 @@ public class FinanceService {
         });
         accounts.addAll(byAccountMsi.keySet());
 
-        boolean isFutureMonth = ym.isAfter(YearMonth.now());
+        // open_cut es relevante en el mes actual y el siguiente (saldos que aún no han cortado)
+        // A partir de 2+ meses en el futuro, no aplica proyectar el acumulado actual
+        boolean showOpenCut = !ym.isAfter(YearMonth.now().plusMonths(1));
         List<Map<String, Object>> expenseByAccount = accounts.stream().map(name -> {
             BigDecimal expenseAmount = byAccountExpenses.getOrDefault(name, BigDecimal.ZERO);
             Map<String, Object> cutSummary = byAccountCutSummary.get(name);
@@ -423,8 +425,7 @@ public class FinanceService {
             BigDecimal fixedAmount = BigDecimal.ZERO;
             if (cutSummary != null) {
                 expenseAmount = number(cutSummary.get("payable_cut_amount"));
-                // En meses futuros no hay transacciones reales: el open_cut pertenece al mes actual
-                openCutAmount = isFutureMonth ? BigDecimal.ZERO : number(cutSummary.get("open_cut_amount"));
+                openCutAmount = showOpenCut ? number(cutSummary.get("open_cut_amount")) : BigDecimal.ZERO;
                 fixedAmount = byAccountFixed.getOrDefault(name, BigDecimal.ZERO);
             }
             BigDecimal msiAmount = byAccountMsi.getOrDefault(name, BigDecimal.ZERO);
@@ -544,8 +545,8 @@ public class FinanceService {
             .map(name -> byAccountExpenses.getOrDefault(name, BigDecimal.ZERO))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // open_cut solo aplica en mes actual o pasado: en meses futuros no hay transacciones reales
-        boolean isCurrentOrPast = !ym.isAfter(YearMonth.now());
+        // open_cut aplica en mes actual y el siguiente: el acumulado de hoy puede ser obligación del próximo mes
+        boolean isCurrentOrPast = !ym.isAfter(YearMonth.now().plusMonths(1));
 
         // Tarjetas: payable_cut si hay corte formal, open_cut si no (solo mes actual/pasado)
         BigDecimal creditTotal = accounts.stream()
