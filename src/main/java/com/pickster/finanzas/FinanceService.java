@@ -415,6 +415,7 @@ public class FinanceService {
         });
         accounts.addAll(byAccountMsi.keySet());
 
+        boolean isFutureMonth = ym.isAfter(YearMonth.now());
         List<Map<String, Object>> expenseByAccount = accounts.stream().map(name -> {
             BigDecimal expenseAmount = byAccountExpenses.getOrDefault(name, BigDecimal.ZERO);
             Map<String, Object> cutSummary = byAccountCutSummary.get(name);
@@ -422,7 +423,8 @@ public class FinanceService {
             BigDecimal fixedAmount = BigDecimal.ZERO;
             if (cutSummary != null) {
                 expenseAmount = number(cutSummary.get("payable_cut_amount"));
-                openCutAmount = number(cutSummary.get("open_cut_amount"));
+                // En meses futuros no hay transacciones reales: el open_cut pertenece al mes actual
+                openCutAmount = isFutureMonth ? BigDecimal.ZERO : number(cutSummary.get("open_cut_amount"));
                 fixedAmount = byAccountFixed.getOrDefault(name, BigDecimal.ZERO);
             }
             BigDecimal msiAmount = byAccountMsi.getOrDefault(name, BigDecimal.ZERO);
