@@ -244,9 +244,10 @@ public class FinanceService {
             item.purchaseDate = LocalDate.now();
         }
         item.status = choice(text(payload.get("status"), "active"), "status", Set.of("active", "closed"));
+        item.startMonth = resolveStartMonth(item.account, item.purchaseDate);
         item.endMonth = text(payload.get("end_month"), "");
         if (item.endMonth.isBlank()) {
-            item.endMonth = YearMonth.from(item.purchaseDate).plusMonths(Math.max(0, item.monthsRemaining - 1)).toString();
+            item.endMonth = YearMonth.parse(item.startMonth).plusMonths(Math.max(0, item.monthsRemaining - 1)).toString();
         } else {
             requireMonth(item.endMonth);
         }
@@ -780,9 +781,28 @@ public class FinanceService {
             "created_at", item.createdAt,
             "updated_at", item.updatedAt,
             "end_month", item.endMonth,
-            "first_payment_month", item.purchaseDate == null ? null : YearMonth.from(item.purchaseDate).toString(),
+            "first_payment_month", item.startMonth != null ? item.startMonth
+                : item.purchaseDate == null ? null : YearMonth.from(item.purchaseDate).toString(),
             "category_name", item.category == null ? null : item.category.name
         );
+    }
+
+    private String resolveStartMonth(Account account, LocalDate purchaseDate) {
+        YearMonth purchaseMonth = YearMonth.from(purchaseDate);
+        LocalDate latestCut = em.createQuery("""
+                select c.cutDate from AccountCutEvent c
+                where c.account = :account
+                order by c.cutDate desc, c.id desc
+                """, LocalDate.class)
+            .setParameter("account", account)
+            .setMaxResults(1)
+            .getResultStream()
+            .findFirst()
+            .orElse(null);
+        if (latestCut != null && !purchaseDate.isBefore(latestCut)) {
+            return purchaseMonth.plusMonths(1).toString();
+        }
+        return purchaseMonth.toString();
     }
 
     private Map<String, Object> accountCutJson(AccountCutEvent item) {

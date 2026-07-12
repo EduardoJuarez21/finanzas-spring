@@ -20,9 +20,8 @@ const elements = {
   monthPickerMonth: document.querySelector("#monthPickerMonth"),
   monthPickerYear: document.querySelector("#monthPickerYear"),
   totalIncome: document.querySelector("#totalIncome"),
-  totalExpense: document.querySelector("#totalExpense"),
+  totalIncomeSubtitle: document.querySelector("#totalIncomeSubtitle"),
   currentBalance: document.querySelector("#currentBalance"),
-  fixedCommitment: document.querySelector("#fixedCommitment"),
   msiActiveCount: document.querySelector("#msiActiveCount"),
   msiRemainingMonths: document.querySelector("#msiRemainingMonths"),
   msiPendingTotal: document.querySelector("#msiPendingTotal"),
@@ -375,11 +374,33 @@ function renderCardsStrip(rows) {
   const cardRows = (rows || []).filter((row) => {
     if (row.is_virtual) return false;
     const s = state.accountSettings[row.account_name] || {};
-    return s.type === "credit" || s.type === "store_card";
+    return s.type === "credit" || s.type === "store_card" || s.type === "debit" || s.type === "cash";
   });
   if (!cardRows.length) return;
 
   cardRows.forEach((row) => {
+    const s = state.accountSettings[row.account_name] || {};
+    const isDebitLike = s.type === "debit" || s.type === "cash";
+    const pill = document.createElement("article");
+
+    if (isDebitLike) {
+      const spent = Number(row.expense_amount || 0);
+      if (spent === 0) return;
+      pill.className = "account-pill account-pill--debit";
+      pill.innerHTML = `
+        <div class="account-pill__body" data-account-name="${row.account_name}">
+          <div class="account-pill__header">
+            <span class="account-pill__name">${row.account_name}</span>
+            <span class="status-chip status-chip--neutral">Débito</span>
+          </div>
+          <strong class="account-pill__amount">${formatMoney(spent)}</strong>
+          <span class="account-pill__detail">Gastos del mes</span>
+        </div>
+      `;
+      elements.cardsStrip.appendChild(pill);
+      return;
+    }
+
     const payment = state.accountPayments.find((p) => p.account_name === row.account_name);
     const isPaid = payment?.status === "paid";
     const latestCut = latestCutForAccount(row.account_name);
@@ -388,7 +409,6 @@ function renderCardsStrip(rows) {
     const openCut = Number(row.open_cut_amount || 0);
     const payable = Number(row.amount || 0);
 
-    // Preview mode: no hay saldo pagadero aún pero hay acumulado en el ciclo abierto
     const isPreview = payable === 0 && openCut > 0;
     const displayAmount = isPreview ? openCut : payable;
 
@@ -399,7 +419,6 @@ function renderCardsStrip(rows) {
       if (Number(row.msi_amount) > 0) detailParts.push(`MSI ${formatMoney(row.msi_amount)}`);
     }
 
-    const pill = document.createElement("article");
     pill.className = `account-pill${isPreview ? " account-pill--preview" : ""}${isPaid ? " account-pill--paid" : ""}${hasCurrentMonthCut ? " account-pill--cut" : ""}`;
     pill.innerHTML = `
       <div class="account-pill__body" data-account-name="${row.account_name}">
@@ -970,24 +989,58 @@ function render() {
     recent_expenses: [],
   };
 
-  elements.totalIncome.textContent = formatMoney(dashboard.totals.income);
-  elements.totalExpense.textContent = formatMoney(dashboard.totals.expense);
-  elements.currentBalance.textContent = formatMoney(dashboard.totals.balance);
-  elements.fixedCommitment.textContent = formatMoney(dashboard.totals.installment_commitment || 0);
-  elements.msiActiveCount.textContent = String(dashboard.msi.active_count || 0);
-  elements.msiRemainingMonths.textContent = String(dashboard.msi.remaining_months || 0);
-  elements.msiPendingTotal.textContent = formatMoney(dashboard.msi.pending_total);
+  const income = Number(dashboard.totals.income || 0);
 
-  const cardsPendingTotal = (dashboard.expense_by_account || [])
+  const accountRows = (dashboard.expense_by_account || []).filter((row) => !row.is_virtual);
+
+  const creditRows = accountRows.filter((row) => {
+    const s = state.accountSettings[row.account_name] || {};
+    return s.type === "credit" || s.type === "store_card";
+  });
+
+  const debitTotal = accountRows
     .filter((row) => {
-      if (row.is_virtual) return false;
       const s = state.accountSettings[row.account_name] || {};
-      if (s.type !== "credit" && s.type !== "store_card") return false;
+      return s.type === "debit" || s.type === "cash";
+    })
+    .reduce((sum, row) => sum + Number(row.expense_amount || 0), 0);
+
+  const paidCreditTotal = creditRows
+    .filter((row) => {
+      const p = state.accountPayments.find((pay) => pay.account_name === row.account_name);
+      return p?.status === "paid";
+    })
+    .reduce((sum, row) => sum + Number(row.amount || 0), 0);
+
+  // open_cut solo cuenta cuando la tarjeta no tiene gastos pagaderos formales (expense_amount=0),
+  // es decir aún no ha cortado este ciclo y lo acumulado ES la obligación del mes actual.
+  // Si ya tiene corte formal (expense_amount>0), el open_cut pertenece al siguiente ciclo.
+  const cardsPendingTotal = creditRows
+    .filter((row) => {
       const p = state.accountPayments.find((pay) => pay.account_name === row.account_name);
       return p?.status !== "paid";
     })
-    .reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    .reduce((sum, row) => {
+      const amount = Number(row.amount || 0);
+      const openCut = Number(row.open_cut_amount || 0);
+      const hasPayableCut = Number(row.expense_amount || 0) > 0;
+      return sum + amount + (hasPayableCut ? 0 : openCut);
+    }, 0);
+
+  const disponible = income - paidCreditTotal - debitTotal;
+  elements.totalIncome.textContent = formatMoney(disponible);
+  const subtitleParts = [];
+  if (paidCreditTotal > 0) subtitleParts.push(`${formatMoney(paidCreditTotal)} pagado en tarjetas`);
+  if (debitTotal > 0) subtitleParts.push(`${formatMoney(debitTotal)} en débito`);
+  elements.totalIncomeSubtitle.textContent = subtitleParts.length
+    ? `De ${formatMoney(income)}: ${subtitleParts.join(", ")}.`
+    : `Ingresos del periodo.`;
   elements.totalCardsPending.textContent = formatMoney(cardsPendingTotal);
+  elements.currentBalance.textContent = formatMoney(income - paidCreditTotal - debitTotal - cardsPendingTotal);
+
+  elements.msiActiveCount.textContent = String(dashboard.msi.active_count || 0);
+  elements.msiRemainingMonths.textContent = String(dashboard.msi.remaining_months || 0);
+  elements.msiPendingTotal.textContent = formatMoney(dashboard.msi.pending_total);
 
   renderCardsStrip(dashboard.expense_by_account);
   renderAccountSummaryRows(dashboard.expense_by_account);
@@ -1969,27 +2022,7 @@ function setupForms() {
   elements.cardsStrip.addEventListener("click", async (event) => {
     const registerCutBtn = event.target.closest(".register-cut-btn");
     if (registerCutBtn) {
-      const cutDate = window.prompt(
-        `Fecha de corte para ${registerCutBtn.dataset.accountName}:`,
-        todayISO()
-      );
-      if (!cutDate) return;
-      registerCutBtn.disabled = true;
-      try {
-        await withLoading("Registrando corte...", async () => {
-          await apiFetch("/account-cuts", {
-            method: "POST",
-            body: JSON.stringify({
-              account_name: registerCutBtn.dataset.accountName,
-              cut_date: cutDate,
-            }),
-          });
-          await refreshFinanceViews();
-        });
-      } catch (error) {
-        window.alert(`No se pudo registrar el corte: ${error.message}`);
-        registerCutBtn.disabled = false;
-      }
+      showCutPicker(registerCutBtn);
       return;
     }
 
@@ -2187,6 +2220,127 @@ function setupSectionTabs() {
   }
   showTab(activeHref, { scroll: false });
 }
+
+// ── Cut Date Picker ───────────────────────────────────────
+const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+const cutPicker = {
+  el: document.getElementById("cutDatePicker"),
+  accountName: null,
+  selectedDate: null,
+  viewYear: null,
+  viewMonth: null,
+};
+
+function showCutPicker(btn) {
+  cutPicker.accountName = btn.dataset.accountName;
+  const today = new Date();
+  cutPicker.viewYear = today.getFullYear();
+  cutPicker.viewMonth = today.getMonth();
+  cutPicker.selectedDate = todayISO();
+
+  document.getElementById("cutPickerTitle").textContent = btn.dataset.accountName;
+  renderCutPickerGrid();
+
+  cutPicker.el.hidden = false;
+  const rect = btn.getBoundingClientRect();
+  const W = 288;
+  const H = cutPicker.el.offsetHeight || 300;
+  let left = rect.left;
+  let top = rect.bottom + 8;
+  if (left + W > window.innerWidth - 8) left = Math.max(8, rect.right - W);
+  if (top + H > window.innerHeight - 8) top = Math.max(8, rect.top - H - 8);
+  cutPicker.el.style.left = left + "px";
+  cutPicker.el.style.top = top + "px";
+}
+
+function hideCutPicker() {
+  cutPicker.el.hidden = true;
+  cutPicker.accountName = null;
+}
+
+function renderCutPickerGrid() {
+  document.getElementById("cutPickerLabel").textContent =
+    `${MONTHS_ES[cutPicker.viewMonth]} ${cutPicker.viewYear}`;
+
+  const grid = document.getElementById("cutPickerGrid");
+  grid.innerHTML = "";
+
+  const today = todayISO();
+  const firstWeekday = new Date(cutPicker.viewYear, cutPicker.viewMonth, 1).getDay();
+  const daysInMonth = new Date(cutPicker.viewYear, cutPicker.viewMonth + 1, 0).getDate();
+  const prevMonthDays = new Date(cutPicker.viewYear, cutPicker.viewMonth, 0).getDate();
+
+  const pad = (n) => String(n).padStart(2, "0");
+  const makeBtn = (label, dateStr, extraClass) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    let cls = "cut-date-picker__day";
+    if (extraClass) cls += " " + extraClass;
+    if (dateStr === today) cls += " cut-date-picker__day--today";
+    if (dateStr === cutPicker.selectedDate) cls += " cut-date-picker__day--selected";
+    b.className = cls;
+    if (dateStr && !extraClass) {
+      b.addEventListener("click", () => {
+        cutPicker.selectedDate = dateStr;
+        renderCutPickerGrid();
+      });
+    }
+    grid.appendChild(b);
+  };
+
+  for (let i = 0; i < firstWeekday; i++) {
+    const d = prevMonthDays - firstWeekday + 1 + i;
+    const m = cutPicker.viewMonth === 0 ? 12 : cutPicker.viewMonth;
+    const y = cutPicker.viewMonth === 0 ? cutPicker.viewYear - 1 : cutPicker.viewYear;
+    makeBtn(d, `${y}-${pad(m)}-${pad(d)}`, "cut-date-picker__day--other");
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${cutPicker.viewYear}-${pad(cutPicker.viewMonth + 1)}-${pad(d)}`;
+    makeBtn(d, dateStr, null);
+  }
+}
+
+async function submitCutDate() {
+  if (!cutPicker.selectedDate || !cutPicker.accountName) return;
+  const accountName = cutPicker.accountName;
+  const cutDate = cutPicker.selectedDate;
+  hideCutPicker();
+  try {
+    await withLoading("Registrando corte...", async () => {
+      await apiFetch("/account-cuts", {
+        method: "POST",
+        body: JSON.stringify({ account_name: accountName, cut_date: cutDate }),
+      });
+      await refreshFinanceViews();
+    });
+  } catch (error) {
+    window.alert(`No se pudo registrar el corte: ${error.message}`);
+  }
+}
+
+(function initCutPicker() {
+  document.getElementById("cutPickerPrev").addEventListener("click", () => {
+    cutPicker.viewMonth--;
+    if (cutPicker.viewMonth < 0) { cutPicker.viewMonth = 11; cutPicker.viewYear--; }
+    renderCutPickerGrid();
+  });
+  document.getElementById("cutPickerNext").addEventListener("click", () => {
+    cutPicker.viewMonth++;
+    if (cutPicker.viewMonth > 11) { cutPicker.viewMonth = 0; cutPicker.viewYear++; }
+    renderCutPickerGrid();
+  });
+  document.getElementById("cutPickerCancel").addEventListener("click", hideCutPicker);
+  document.getElementById("cutPickerConfirm").addEventListener("click", submitCutDate);
+  document.addEventListener("click", (e) => {
+    if (cutPicker.el.hidden) return;
+    if (!cutPicker.el.contains(e.target) && !e.target.closest(".register-cut-btn")) {
+      hideCutPicker();
+    }
+  });
+})();
 
 setupSectionTabs();
 setupThemeToggle();

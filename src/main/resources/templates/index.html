@@ -161,29 +161,19 @@
 
         <div class="stats-grid">
           <article class="stat-card stat-card--income">
-            <span>Ingresos del mes</span>
+            <span>Disponible en cuenta</span>
             <strong id="totalIncome">$0.00</strong>
-            <small>Incluye salario Elisa, salario Lalo y registros manuales.</small>
-          </article>
-          <article class="stat-card stat-card--expense">
-            <span>Gastos del mes + fijos</span>
-            <strong id="totalExpense">$0.00</strong>
-            <small>Suma de gastos diarios y compromisos fijos del periodo.</small>
-          </article>
-          <article class="stat-card stat-card--fixed">
-            <span>Compromiso MSI</span>
-            <strong id="fixedCommitment">$0.00</strong>
-            <small>Mensualidades activas de compras a meses sin intereses.</small>
+            <small id="totalIncomeSubtitle">Ingresos del periodo.</small>
           </article>
           <article class="stat-card stat-card--card">
             <span>Tarjetas por pagar</span>
             <strong id="totalCardsPending">$0.00</strong>
-            <small>Total pendiente en tarjetas de crédito y tienda.</small>
+            <small>Saldo pendiente más gastos acumulados sin corte.</small>
           </article>
           <article class="stat-card stat-card--balance">
-            <span>Balance actual</span>
+            <span>Balance estimado</span>
             <strong id="currentBalance">$0.00</strong>
-            <small>Ingresos menos gastos del mes y mensualidades MSI.</small>
+            <small>Ingresos menos todos los compromisos del mes.</small>
           </article>
         </div>
 
@@ -632,6 +622,24 @@
       <p>Registra información para ver el resumen aquí.</p>
     </div>
   </template>
+
+  <!-- Calendar picker for cut date registration -->
+  <div id="cutDatePicker" class="cut-date-picker" hidden>
+    <div class="cut-date-picker__title" id="cutPickerTitle"></div>
+    <div class="cut-date-picker__nav-row">
+      <button type="button" class="cut-date-picker__nav" id="cutPickerPrev">&#8249;</button>
+      <span class="cut-date-picker__month-label" id="cutPickerLabel"></span>
+      <button type="button" class="cut-date-picker__nav" id="cutPickerNext">&#8250;</button>
+    </div>
+    <div class="cut-date-picker__days-header">
+      <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sa</span>
+    </div>
+    <div id="cutPickerGrid" class="cut-date-picker__grid"></div>
+    <div class="cut-date-picker__actions">
+      <button type="button" class="button button--ghost button--small" id="cutPickerCancel">Cancelar</button>
+      <button type="button" class="button button--primary button--small" id="cutPickerConfirm">Registrar corte</button>
+    </div>
+  </div>
 
   <script th:src="@{/app.js}" src="/app.js"></script>
 </body>

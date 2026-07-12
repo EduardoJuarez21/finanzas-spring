@@ -41,6 +41,9 @@ public class InstallmentPlan {
     @Column(name = "end_month")
     public String endMonth;
 
+    @Column(name = "start_month")
+    public String startMonth;
+
     public String status;
 
     @Column(name = "created_at", insertable = false, updatable = false)
