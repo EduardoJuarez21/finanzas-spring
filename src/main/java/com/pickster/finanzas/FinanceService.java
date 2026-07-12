@@ -512,10 +512,14 @@ public class FinanceService {
         Map<String, Map<String, Object>> byAccountCutSummary = accountCutSummaryAmounts(ym);
         Map<String, BigDecimal> byAccountFixed = new LinkedHashMap<>();
         Set<String> virtualAccounts = new HashSet<>();
+        Set<String> debitAccounts = new HashSet<>();
         for (Map<String, Object> row : monthlyExpenses) {
             String accountName = String.valueOf(row.get("account_name"));
             if (Boolean.TRUE.equals(row.get("is_virtual"))) {
                 virtualAccounts.add(accountName);
+            }
+            if ("debit".equals(row.get("account_type")) || "cash".equals(row.get("account_type"))) {
+                debitAccounts.add(accountName);
             }
             if ("fixed".equals(row.get("entry_type")) && !"paid".equals(row.get("payment_status"))) {
                 byAccountFixed.merge(accountName, number(row.get("amount")), BigDecimal::add);
@@ -533,17 +537,29 @@ public class FinanceService {
                 accounts.add(name);
             }
         });
-        return accounts.stream()
-            .filter(name -> !virtualAccounts.contains(name))
+        // Débito: sumar gasto directo (ya viene en byAccountExpenses)
+        BigDecimal debitTotal = debitAccounts.stream()
+            .map(name -> byAccountExpenses.getOrDefault(name, BigDecimal.ZERO))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Tarjetas: payable_cut si hay corte formal, open_cut si no (misma regla que dashboard)
+        BigDecimal creditTotal = accounts.stream()
+            .filter(name -> !virtualAccounts.contains(name) && !debitAccounts.contains(name))
             .map(name -> {
                 Map<String, Object> cutSummary = byAccountCutSummary.get(name);
                 if (cutSummary == null) {
                     return byAccountExpenses.getOrDefault(name, BigDecimal.ZERO);
                 }
-                return number(cutSummary.get("payable_cut_amount"))
-                    .add(byAccountFixed.getOrDefault(name, BigDecimal.ZERO));
+                BigDecimal payable = number(cutSummary.get("payable_cut_amount"));
+                BigDecimal fixed = byAccountFixed.getOrDefault(name, BigDecimal.ZERO);
+                BigDecimal openCut = number(cutSummary.get("open_cut_amount"));
+                return payable.compareTo(BigDecimal.ZERO) > 0
+                    ? payable.add(fixed)
+                    : openCut.add(fixed);
             })
             .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return debitTotal.add(creditTotal);
     }
 
     private Map<String, Map<String, Object>> accountCutSummaryAmounts(YearMonth month) {
