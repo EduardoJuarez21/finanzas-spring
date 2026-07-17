@@ -448,7 +448,7 @@ function renderCardsStrip(rows) {
         ${isPaid && payment.paid_date ? `<span class="account-pill__detail">Pagado el ${formatDate(payment.paid_date)}</span>` : ''}
       </div>
       <div class="account-pill__action">
-        ${Number(row.expense_amount || 0) > 0 ? `
+        ${(Number(row.expense_amount || 0) > 0 || hasCurrentMonthCut) && payable > 0 ? `
           <button
             class="button ${isPaid ? 'button--ghost' : 'button--secondary'} button--small account-payment-status-btn"
             type="button"
