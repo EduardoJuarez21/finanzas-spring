@@ -44,6 +44,9 @@ const elements = {
   fixedExpenseList: document.querySelector("#fixedExpenseList"),
   msiList: document.querySelector("#msiList"),
   expenseForm: document.querySelector("#expenseForm"),
+  expenseRows: document.querySelector("#expenseRows"),
+  addExpenseRowBtn: document.querySelector("#addExpenseRowBtn"),
+  saveExpenseBtn: document.querySelector("#saveExpenseBtn"),
   expenseAccountHint: document.querySelector("#expenseAccountHint"),
   incomeForm: document.querySelector("#incomeForm"),
   accountCutForm: document.querySelector("#accountCutForm"),
@@ -787,6 +790,7 @@ function seedSelects() {
 
   renderExpenseAccountHint();
   renderExpenseCategoryList();
+  refreshExpenseRowCategories();
 }
 
 function getCycleInfo(accountName, referenceDate = new Date()) {
@@ -1595,31 +1599,137 @@ async function refreshFinanceViews(options = {}) {
   await refreshYearlySummary();
 }
 
+function buildExpenseRow() {
+  const row = document.createElement("div");
+  row.className = "expense-row";
+
+  const descInput = document.createElement("input");
+  descInput.type = "text";
+  descInput.placeholder = "Descripción";
+  descInput.maxLength = 120;
+  descInput.required = true;
+  descInput.className = "expense-row__desc";
+
+  const catSelect = document.createElement("select");
+  catSelect.required = true;
+  catSelect.className = "expense-row__cat";
+  const templateCat = document.getElementById("expenseCategory");
+  if (templateCat) {
+    Array.from(templateCat.options).forEach((opt) => {
+      catSelect.appendChild(opt.cloneNode(true));
+    });
+  }
+
+  const amountInput = document.createElement("input");
+  amountInput.type = "number";
+  amountInput.min = "0";
+  amountInput.step = "0.01";
+  amountInput.inputMode = "decimal";
+  amountInput.placeholder = "0.00";
+  amountInput.required = true;
+  amountInput.className = "expense-row__amount";
+
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "expense-row__remove";
+  removeBtn.setAttribute("aria-label", "Eliminar fila");
+  removeBtn.textContent = "×";
+  removeBtn.addEventListener("click", () => {
+    const rows = elements.expenseRows.querySelectorAll(".expense-row");
+    if (rows.length > 1) {
+      row.remove();
+      updateExpenseSaveBtnLabel();
+    }
+  });
+
+  // Tab desde monto → agrega fila si es la última
+  amountInput.addEventListener("keydown", (e) => {
+    if (e.key === "Tab" && !e.shiftKey) {
+      const rows = elements.expenseRows.querySelectorAll(".expense-row");
+      if (row === rows[rows.length - 1]) {
+        e.preventDefault();
+        addExpenseRow(true);
+      }
+    }
+  });
+
+  row.append(descInput, catSelect, amountInput, removeBtn);
+  return row;
+}
+
+function addExpenseRow(focusDesc = false) {
+  const row = buildExpenseRow();
+  elements.expenseRows.appendChild(row);
+  updateExpenseSaveBtnLabel();
+  if (focusDesc) row.querySelector(".expense-row__desc").focus();
+  return row;
+}
+
+function resetExpenseRows() {
+  elements.expenseRows.innerHTML = "";
+  addExpenseRow(false);
+}
+
+function updateExpenseSaveBtnLabel() {
+  const count = elements.expenseRows.querySelectorAll(".expense-row").length;
+  elements.saveExpenseBtn.textContent = count === 1 ? "Guardar gasto" : `Guardar ${count} gastos`;
+}
+
+function refreshExpenseRowCategories() {
+  const templateCat = document.getElementById("expenseCategory");
+  if (!templateCat) return;
+  elements.expenseRows.querySelectorAll(".expense-row__cat").forEach((sel) => {
+    const current = sel.value;
+    sel.innerHTML = "";
+    Array.from(templateCat.options).forEach((opt) => sel.appendChild(opt.cloneNode(true)));
+    sel.value = current;
+  });
+}
+
 function setupForms() {
   [elements.expenseForm, elements.incomeForm].forEach((form) => {
     form.querySelector('input[name="date"]').value = defaultDateForMonth();
   });
   elements.accountCutDateInput.value = todayISO();
 
+  // Inicializar primera fila de gastos
+  resetExpenseRows();
+  elements.addExpenseRowBtn.addEventListener("click", () => addExpenseRow(true));
+
   elements.expenseForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const month = monthFromDate(formData.get("date"));
+    const date = formData.get("date");
+    const accountName = formData.get("account");
+    const month = monthFromDate(date);
+
+    const rowEls = Array.from(elements.expenseRows.querySelectorAll(".expense-row"));
+    const expenses = rowEls
+      .map((row) => ({
+        date,
+        account_name: accountName,
+        description: row.querySelector(".expense-row__desc").value.trim(),
+        category_name: row.querySelector(".expense-row__cat").value,
+        amount: Number(row.querySelector(".expense-row__amount").value),
+      }))
+      .filter((e) => e.description && e.amount > 0);
+
+    if (!expenses.length) return;
+
     try {
-      await withLoading("Guardando gasto...", async () => {
-        await apiFetch("/expenses", {
-          method: "POST",
-          body: JSON.stringify({
-            date: formData.get("date"),
-            amount: Number(formData.get("amount")),
-            description: String(formData.get("description")).trim(),
-            category_name: formData.get("category"),
-            account_name: formData.get("account"),
-          }),
-        });
-        await refreshFinanceViews({ month });
-        resetForm(elements.expenseForm);
-      });
+      await withLoading(
+        expenses.length === 1 ? "Guardando gasto..." : `Guardando ${expenses.length} gastos...`,
+        async () => {
+          await Promise.all(
+            expenses.map((e) =>
+              apiFetch("/expenses", { method: "POST", body: JSON.stringify(e) })
+            )
+          );
+          await refreshFinanceViews({ month });
+          elements.expenseForm.querySelector('input[name="date"]').value = defaultDateForMonth();
+          resetExpenseRows();
+        }
+      );
     } catch (error) {
       window.alert(`No se pudo guardar el gasto: ${error.message}`);
     }

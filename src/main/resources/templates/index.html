@@ -83,23 +83,18 @@
                 <input name="date" type="date" required>
               </label>
               <label>
-                Monto
-                <input name="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
-              </label>
-              <label class="form-grid__full">
-                Descripción
-                <input name="description" type="text" maxlength="120" placeholder="Ej. Supermercado, gasolina, colegiatura" required>
-              </label>
-              <label>
-                Tipo de gasto
-                <select name="category" id="expenseCategory" required></select>
-              </label>
-              <label>
                 Cuenta o medio de pago
                 <select name="account" id="expenseAccount" required></select>
               </label>
               <p id="expenseAccountHint" class="form-note form-grid__full"></p>
-              <button class="button button--primary form-grid__full" type="submit">Guardar gasto</button>
+              <!-- Plantilla oculta de categorías — se clona en cada fila -->
+              <select id="expenseCategory" style="display:none;" aria-hidden="true"></select>
+              <!-- Filas de gastos -->
+              <div id="expenseRows" class="form-grid__full expense-rows"></div>
+              <div class="form-grid__full expense-rows-footer">
+                <button type="button" id="addExpenseRowBtn" class="button button--ghost button--small">+ Agregar fila</button>
+              </div>
+              <button class="button button--primary form-grid__full" type="submit" id="saveExpenseBtn">Guardar gasto</button>
             </form>
           </div>
         </details>
