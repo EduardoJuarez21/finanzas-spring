@@ -1184,9 +1184,19 @@ body.is-loading {
 
 .expense-row {
   display: grid;
-  grid-template-columns: 1fr auto 110px 32px;
+  grid-template-columns: 1fr 160px 110px 32px;
   gap: 8px;
   align-items: center;
+}
+
+.expense-row--header {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 2px;
+  pointer-events: none;
 }
 
 .expense-row input,

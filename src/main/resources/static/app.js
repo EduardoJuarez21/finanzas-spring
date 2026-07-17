@@ -1613,6 +1613,12 @@ function buildExpenseRow() {
   const catSelect = document.createElement("select");
   catSelect.required = true;
   catSelect.className = "expense-row__cat";
+  const placeholderOpt = document.createElement("option");
+  placeholderOpt.value = "";
+  placeholderOpt.textContent = "Categoría";
+  placeholderOpt.disabled = true;
+  placeholderOpt.selected = true;
+  catSelect.appendChild(placeholderOpt);
   const templateCat = document.getElementById("expenseCategory");
   if (templateCat) {
     Array.from(templateCat.options).forEach((opt) => {
@@ -1667,6 +1673,15 @@ function addExpenseRow(focusDesc = false) {
 
 function resetExpenseRows() {
   elements.expenseRows.innerHTML = "";
+  const header = document.createElement("div");
+  header.className = "expense-row expense-row--header";
+  header.innerHTML = `
+    <span>Descripción</span>
+    <span>Categoría</span>
+    <span>Monto</span>
+    <span></span>
+  `;
+  elements.expenseRows.appendChild(header);
   addExpenseRow(false);
 }
 
